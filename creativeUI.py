@@ -1050,9 +1050,8 @@ class creativeUI(QtWidgets.QWidget):
         md.jointLocParent(self.sortedJntIDs[-1], self.sortedLocIDs[-1]) # type: ignore
 
         # zero out starting joint transformation values (translate, rotate, scale, normal)
-        mc.makeIdentity(self.sortedJntIDs[0], 
-                        translate=True, rotate=True, scale=True,
-                        normal=True)
+        mc.makeIdentity(self.sortedJntIDs[0], apply=True,
+                        translate=True, rotate=True, scale=True)
         
         # orientCheck=self.findChild(QtWidgets.QCheckBox, 'orientCheck')
         # if orientCheck.isChecked():
@@ -1060,6 +1059,7 @@ class creativeUI(QtWidgets.QWidget):
         orientJoint=self.findChild(QtWidgets.QComboBox, 'orientJntMenu').currentText()
         secAxis=self.findChild(QtWidgets.QComboBox, 'secOrientMenu').currentText()
         rotOrder=self.findChild(QtWidgets.QComboBox, 'rotOrderMenu').currentText()
+        print((orientJoint, secAxis, rotOrder))
 
         mc.joint(self.sortedJntIDs, edit=True, orientJoint=orientJoint, 
                     secondaryAxisOrient=secAxis, rotationOrder=rotOrder, children=True)

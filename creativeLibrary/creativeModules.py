@@ -85,7 +85,6 @@ def buildJointChain(startVector:om.MPoint, endVector:om.MPoint,
             newJnt=cmds.joint(name=jntName, p=jntPos, rad=jntsRad)
             createdJnts.append(newJnt)
 
-    endJntName=jntNames[-1]
     # obtain start and end joint names
     startJnt, endJnt = createdJnts[0], createdJnts[-1]
     # set joint orientation for the entire chain except
