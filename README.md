@@ -1,15 +1,35 @@
 # Creative Skeletons
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
-![Maya](https://img.shields.io/badge/Autodesk-Maya-00AEEF)
-![Status](https://img.shields.io/badge/Status-Active%20Development-green)
-![Focus](https://img.shields.io/badge/Focus-Rigging%20Systems-orange)
+![Python](https://img.shields.io/badge/python-ffdd54?logo=python&logoColor=white) ![Autodesk Maya 2025+](https://img.shields.io/badge/Autodesk%20Maya%202024+-00AEEF?logo=autodesk&logoColor=white) ![Latest Commit](https://img.shields.io/github/last-commit/Smiley-Boy00/creativeSK) [![Latest Release](https://img.shields.io/github/v/release/Smiley-Boy00/creativeSK?label=Download&color=37A5CC)](https://github.com/Smiley-Boy00/creativeSK/releases/latest) ![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white) ![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)
+![Free for Commercial Use](https://img.shields.io/badge/Free%20for%20Commercial%20Use-✔-brightgreen) ![No Resale](https://img.shields.io/badge/Do%20Not%20Resale-✖-red)
 
-**Procedural Joint Builder and Rig Planning Tool for Autodesk Maya**
+*Procedural Joint Builder and Rig Planning Tool for Autodesk Maya*
 
+## Table of Contents
+- [About](#fax-about)
+- [Tool Source Code and Details](#bulb-tool-source-code-and-details)
+- [Core Features](#core-features)
+- [Workflow](#workflow)
+- [Roadmap](#roadmap)
+- [Project Status](#project-status)
+- [Feedback](#speech_balloon-feedback)
+- [Contacts](#-contacts)
+
+## :fax: About
 Creative Skeletons is a Python driven joint chain builder designed to help plan, validate, and construct skeletons in a consistent and scalable way inside Maya.  
 The tool focuses on rig integrity, automation, and repeatable workflows rather than manual joint placement.
 
+### Design Philosophy
+
+• Data driven over manual edits  
+• Rebuildable systems over destructive workflows  
+• Clear separation between planning and execution  
+• Readable and maintainable code  
+
 This project is part of an ongoing rigging and tooling portfolio focused on system driven rig development using Maya Python and the OpenMaya API.
+
+## :bulb: Tool Source Code and Details
+### Current Release: TBD
+### Maya Tools Source Code: v0.1
 
 ## Core Features
 
@@ -28,17 +48,6 @@ This project is part of an ongoing rigging and tooling portfolio focused on syst
 4. Build joints automatically from the locator data  
 5. Iterate safely without breaking the system  
 
-## Design Philosophy
-
-• Data driven over manual edits  
-• Rebuildable systems over destructive workflows  
-• Clear separation between planning and execution  
-• Readable and maintainable code  
-
-This tool is intentionally kept modular so it can evolve into full rig builders in the future.
-
----
-
 ## Roadmap
 
 • Validation and error reporting  
@@ -46,22 +55,24 @@ This tool is intentionally kept modular so it can evolve into full rig builders 
 • Integration with future rig modules  
 • Expanded API level control  
 
----
-
 ## Project Status
 
-Active development  
-This project evolves as part of an ongoing rigging and technical art learning path.
+> 🛠 This tool is in **Alpha**: Expect changes and possible bugs as I add new features and improve workflows.  
+> ✅ **Free for Commercial Use**: This tool can be used for both personal and professional projects without restrictions.  
+> ⚠️ **No Resale or Redistribution**: This tool cannot be resold or redistributed for commercial intent.  
 
-Expect frequent refactors as systems improve.
+## :speech_balloon: Feedback  
 
----
+If you encounter a problem or have an idea for improvement:  
+1. Open an **[Issue](https://github.com/Smiley-Boy00/creativeSK/issues)** describing your problem, suggestion, or request.  
+2. Include as much detail as possible: logs, screenshots, reproduction steps.  
 
-## Author
+💡 Your feedback will influence future releases!
 
-David Martinez  
-Technical Artist and Rigging TD  
-Vancouver, Canada  
+## 📇 Contacts  
 
-GitHub: https://github.com/Smiley-Boy00  
+Want to connect, ask a question, or collaborate? Here's how to reach me:  
 
+- 📧 **Email:** davidmartinez3dtech@gmail.com  
+- 💬 **Discord:** `smiley_boy`  
+- 🌐 **Portfolio / Website:** [Artstation](https://www.artstation.com/davidmartinez3dtech)  
