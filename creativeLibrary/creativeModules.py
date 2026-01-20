@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 import os
 
-def createLocator(selectionLs:list, name:str, 
+def createLocator(name:str, 
                   prefix:str|None=None, suffix:str|None=None,
                   locScale=5):
     ''' 
@@ -12,21 +12,13 @@ def createLocator(selectionLs:list, name:str,
     constrains a newly created locator to the cluster position. 
     Returns the locator transform name. 
     '''
-    # use flatten flag to store selection values a sequential list (i.e. vtx[], vtx[], vtx[])
-    dataSelection=cmds.ls(selectionLs, flatten=True)
-    if not dataSelection:
-        return None
-    clusterObj=cmds.cluster(dataSelection, name=f'{name}_CLS')
     # create custom locator and obtain its transform node
-    locShp=cmds.createNode('cLocator', name=f'{name}_LOC_SHP')
+    locShp=cmds.createNode('cLocator', name=f'{name}_loc_shp')
     locTrn=cmds.listRelatives(locShp, parent=True)[0]
     # set locator's local scale
     scaleID=['localScaleX', 'localScaleY', 'localScaleZ']
     for id in scaleID:
         cmds.setAttr(f'{locShp}.{id}', locScale)
-    # constrain locator to cluster position then delete constraint
-    cmds.pointConstraint(clusterObj, locTrn)
-    cmds.delete(clusterObj)
     if prefix:
         # add prefix string to locator 
         name=prefix+name
@@ -133,6 +125,20 @@ def aimLocators(locStartName:str, locEndName:str,
     negAimVector=[val*(-1) for val in aimVector]
     cmds.aimConstraint(locStartName, locEndName, aim=negAimVector, u=upVector, wu=worldUpVector)
 
+def clusterLocParent(selectionLs:list, clusterName:str, locObj:str):
+    ''' 
+    Creates single cluster based on the selection list to point constrain a locator to it.
+    Deletes cluster after constraint.
+    '''
+    # use flatten flag to store selection values a sequential list (i.e. vtx[], vtx[], vtx[])
+    dataSelection=cmds.ls(selectionLs, flatten=True)
+    if not dataSelection:
+        return None
+    clusterObj=cmds.cluster(dataSelection, name=f'{clusterName}_cls')
+    # constrain locator to cluster position then delete constraint
+    cmds.pointConstraint(clusterObj, locObj)
+    cmds.delete(clusterObj)
+
 def jointLocParent(jntName:str, locName:str):
     ''' 
     Constrains a locator to a joint using parent constraint.
@@ -150,6 +156,34 @@ def jointLocParent(jntName:str, locName:str):
             cmds.delete(constraint)
     
     cmds.parentConstraint(jntName, locName)
+
+def mirrorJoints(mirrorAxis:str='YZ', mirrorFunc:str='Behavior',
+                 search:str='', replace:str=''):
+    ''' 
+    Sets up joint mirroring based on provided axis and function. 
+    Returns a list of the newly created mirrored joint chain.
+    '''
+    mirrorAxisVal, mirrorFuncVal = ('XY','XZ','YZ'), ('Behavior', 'Orientation')
+    if mirrorAxis not in mirrorAxisVal or mirrorFunc not in mirrorFuncVal:
+        raise ValueError('Wrong value given for mirrorAxis or mirrorFunc')
+    
+    jointSelection=cmds.ls(selection=True, type='joint')
+    if not jointSelection:
+        return None
+
+    searchReplace=(search, replace)
+
+    if mirrorAxis=='XY':
+        cmds.mirrorJoint(mxy=True, mb=True, sr=searchReplace) if mirrorFunc == 'Behavior' else cmds.mirrorJoint(mxy=True, mb=False, sr=searchReplace)
+    elif mirrorAxis=='XZ':
+        cmds.mirrorJoint(mxz=True, mb=True, sr=searchReplace) if mirrorFunc == 'Behavior' else cmds.mirrorJoint(mxz=True, mb=False, sr=searchReplace)
+    else:
+        cmds.mirrorJoint(myz=True, mb=True, sr=searchReplace) if mirrorFunc == 'Behavior' else cmds.mirrorJoint(myz=True, mb=False, sr=searchReplace)
+    
+    cmds.select(hi=True)
+    mirroredChain=cmds.ls(selection=True, type='joint')
+    
+    return mirroredChain
 
 def savePositions(vertSelectionList:list, setName:str):
     '''
