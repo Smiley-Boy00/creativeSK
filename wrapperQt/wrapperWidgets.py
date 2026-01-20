@@ -1,24 +1,22 @@
 from PySide6 import QtCore, QtWidgets
 
-class wrapWid(QtWidgets.QWidget):
+class wrapWid():
     ''' A wrapper class for commonly used Qt Widgets, gets the widget if it already exists. '''
-    def __init__(self, parentUI):
+    def __init__(self, parentUI:QtWidgets.QWidget):
         ''' Initializes the QWidget methods, parented to the called UI. '''
-        super(wrapWid, self).__init__(parent=parentUI)
+        self.parentUI=parentUI
 
     def create_or_show_button(self, widgetID:str, label:str,
-                        parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                        enabled:bool=True, visible:bool=True,
-                        margins:tuple[int,int,int,int]=(0,0,0,0), 
-                        gridSet:tuple[int,int]=(0,0), clickedCmd=None):
+                              parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                              enabled:bool=True, visible:bool=True,
+                              margins:tuple[int,int,int,int]=(0,0,0,0),
+                              gridSet:tuple[int,int]=(0,0), clickedCmd=None):
         ''' Returns a built or obtained QPushButton widget based on the widgetID. '''
 
-        buttonWidget=self.findChild(QtWidgets.QPushButton, widgetID)
-        if not buttonWidget:
-            buttonWidget=QtWidgets.QPushButton(label)
-            buttonWidget.setObjectName(widgetID)
-            if clickedCmd:
-                buttonWidget.clicked.connect(clickedCmd)
+        buttonWidget=QtWidgets.QPushButton(label, parent=self.parentUI)
+        buttonWidget.setObjectName(widgetID)
+        if clickedCmd:
+            buttonWidget.clicked.connect(clickedCmd)
 
         buttonWidget.setContentsMargins(*margins)
         if not visible:
@@ -36,18 +34,18 @@ class wrapWid(QtWidgets.QWidget):
                                    iconSize:QtCore.QSize=QtCore.QSize(15,15),
                                    styleSheet:str='', gridSet:tuple[int,int]=(0,0)):
         ''' Returns a built or obtained QToolButton as an arrow widget based on the widgetID. '''
+
         arrow_types={'left':QtCore.Qt.LeftArrow, 'right':QtCore.Qt.RightArrow,
                      'up':QtCore.Qt.UpArrow, 'down':QtCore.Qt.DownArrow}
         if not arrow_types.get(direction):
             raise ValueError(f'{direction} is not a valid arrow direction, use: ["left", "right", "up", "down"]')
-        arrowButtonWidget=self.findChild(QtWidgets.QToolButton, widgetID)
-        if not arrowButtonWidget:
-            arrowButtonWidget=QtWidgets.QToolButton()
-            arrowButtonWidget.setObjectName(widgetID)
-            arrowButtonWidget.setArrowType(arrow_types.get(direction))
-            arrowButtonWidget.setIconSize(iconSize)
-            if styleSheet:
-                arrowButtonWidget.setStyleSheet(styleSheet)
+        
+        arrowButtonWidget=QtWidgets.QToolButton(parent=self.parentUI)
+        arrowButtonWidget.setObjectName(widgetID)
+        arrowButtonWidget.setArrowType(arrow_types.get(direction))
+        arrowButtonWidget.setIconSize(iconSize)
+        if styleSheet:
+            arrowButtonWidget.setStyleSheet(styleSheet)
 
         if not visible:
             arrowButtonWidget.hide()
@@ -72,10 +70,9 @@ class wrapWid(QtWidgets.QWidget):
             numField=QtWidgets.QSpinBox
         else:
             numField=QtWidgets.QDoubleSpinBox
-        fieldWidget=self.findChild(numField, widgetID)
-        if not fieldWidget:
-            fieldWidget=numField()
-            fieldWidget.setObjectName(widgetID)
+
+        fieldWidget=numField(parent=self.parentUI)
+        fieldWidget.setObjectName(widgetID)
 
         fieldWidget.setMinimum(minVal)
         fieldWidget.setMaximum(maxVal)
@@ -96,31 +93,42 @@ class wrapWid(QtWidgets.QWidget):
             
         return fieldWidget
 
-    def create_or_show_textField(self, widgetID:str, label:str,
+    def create_or_show_textField(self, widgetID:str, 
                                  parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout, 
-                                 placeholderText:str='', enabled:bool=True, visible:bool=True, 
+                                 label:str|None=None, text:str='', placeholderText:str='', 
+                                 enabled:bool=True, visible:bool=True, 
                                  margins:tuple[int,int,int,int]=(0,0,0,0), 
                                  gridSet:tuple[int,int]=(0,0), align=None):
         ''' Returns a built or obtained QLineEdit widget based on the widgetID. '''
         
-        fieldWidget=self.findChild(QtWidgets.QLineEdit, widgetID)
-        if not fieldWidget:
-            fieldWidget=QtWidgets.QLineEdit()
-            fieldWidget.setObjectName(widgetID)
+        fieldWidget=QtWidgets.QLineEdit()
+        fieldWidget.setObjectName(widgetID)
 
+        fieldWidget.setText(text)
         fieldWidget.setPlaceholderText(placeholderText)
         fieldWidget.setContentsMargins(*margins)
         if align:
             fieldWidget.setAlignment(align)
-        if not visible:
-            fieldWidget.hide()
         fieldWidget.setEnabled(enabled)
-        formLayout=QtWidgets.QFormLayout()
-        formLayout.addRow(label, fieldWidget)
-        if isinstance(parentLayout, QtWidgets.QGridLayout):
-            parentLayout.addLayout(formLayout, gridSet[0], gridSet[1])
+        if label:
+            formLayout=QtWidgets.QFormLayout()
+            formLayout.setObjectName(f'{widgetID}Form')
+            formLayout.addRow(label, fieldWidget)
+            if not visible:
+                formLayout.setRowVisible(0, False)
+        
+            if isinstance(parentLayout, QtWidgets.QGridLayout):
+                parentLayout.addLayout(formLayout, gridSet[0], gridSet[1])
+            else:
+                parentLayout.addLayout(formLayout)
         else:
-            parentLayout.addLayout(formLayout)
+            if not visible:
+                fieldWidget.hide()
+
+            if isinstance(parentLayout, QtWidgets.QGridLayout):
+                parentLayout.addWidget(fieldWidget, gridSet[0], gridSet[1])
+            else:
+                parentLayout.addWidget(fieldWidget)
         return fieldWidget
 
     def create_or_show_checkbox(self, widgetID:str, label:str,
@@ -130,12 +138,10 @@ class wrapWid(QtWidgets.QWidget):
                                  clickedCmd=None):
         ''' Returns a built or obtained QCheckBox widget based on the widgetID. '''
         
-        checkboxWidget=self.findChild(QtWidgets.QCheckBox, widgetID)
-        if not checkboxWidget:
-            checkboxWidget=QtWidgets.QCheckBox(label)
-            checkboxWidget.setObjectName(widgetID)
-            if clickedCmd:
-                checkboxWidget.clicked.connect(clickedCmd)
+        checkboxWidget=QtWidgets.QCheckBox(label, parent=self.parentUI)
+        checkboxWidget.setObjectName(widgetID)
+        if clickedCmd:
+            checkboxWidget.clicked.connect(clickedCmd)
 
         if not visible:
             checkboxWidget.hide()
@@ -157,12 +163,10 @@ class wrapWid(QtWidgets.QWidget):
                                     clickedCmd=None):
         ''' Returns a built or obtained QCheckBox widget based on the widgetID. '''
         
-        radioButtonWidget=self.findChild(QtWidgets.QRadioButton, widgetID)
-        if not radioButtonWidget:
-            radioButtonWidget=QtWidgets.QRadioButton(label)
-            radioButtonWidget.setObjectName(widgetID)
-            if clickedCmd:
-                radioButtonWidget.clicked.connect(clickedCmd)
+        radioButtonWidget=QtWidgets.QRadioButton(label, parent=self.parentUI)
+        radioButtonWidget.setObjectName(widgetID)
+        if clickedCmd:
+            radioButtonWidget.clicked.connect(clickedCmd)
 
         if not visible:
             radioButtonWidget.hide()
@@ -185,10 +189,8 @@ class wrapWid(QtWidgets.QWidget):
                         gridSet:tuple[int,int]=(0,0), align=None):
         ''' Returns a built or obtained QSlider widget based on the widgetID. '''
         
-        sliderWidget=self.findChild(QtWidgets.QSlider, widgetID)
-        if not sliderWidget:
-            sliderWidget=QtWidgets.QSlider(orientation)
-            sliderWidget.setObjectName(widgetID)
+        sliderWidget=QtWidgets.QSlider(orientation, parent=self.parentUI)
+        sliderWidget.setObjectName(widgetID)
 
         sliderWidget.setMinimum(minVal)
         sliderWidget.setMaximum(maxVal)
@@ -210,11 +212,11 @@ class wrapWid(QtWidgets.QWidget):
     def create_or_show_label(self, widgetID:str, label:str,
                              parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                              enabled:bool=True, visible:bool=True,
-                             gridSet:tuple[int,int]=(0,0), align=False):
-        labelWidget=self.findChild(QtWidgets.QLabel, widgetID)
-        if not labelWidget:
-            labelWidget=QtWidgets.QLabel(label)
-            labelWidget.setObjectName(widgetID)
+                             gridSet:tuple[int,int]=(0,0), align=None):
+        ''' Returns a built or obtained QLabel widget based on the widgetID. '''
+
+        labelWidget=QtWidgets.QLabel(label, parent=self.parentUI)
+        labelWidget.setObjectName(widgetID)
         if align:
             labelWidget.setAlignment(align)
         if not visible:
@@ -224,3 +226,4 @@ class wrapWid(QtWidgets.QWidget):
             parentLayout.addWidget(labelWidget, gridSet[0], gridSet[1])
         else:
             parentLayout.addWidget(labelWidget)
+        return labelWidget
