@@ -63,48 +63,5 @@ class wrapLay():
 
         return gridLayout
     
-class collapsibleFrame(QtWidgets.QWidget):
-    toggled = QtCore.Signal(bool)
-    def __init__(self, parentUI:QtWidgets.QWidget, expanded:bool=True, title=""):
-        super().__init__(parentUI)
-        
-        self._expanded = expanded
 
-        # --- Header button (click anywhere on the header)
-        self.header_btn = QtWidgets.QToolButton()
-        self.header_btn.setText(title)
-        self.header_btn.setCheckable(True)
-        self.header_btn.setChecked(expanded)
-        self.header_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        self.header_btn.setArrowType(QtCore.Qt.DownArrow if expanded else QtCore.Qt.RightArrow)
-        self.header_btn.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.header_btn.setAutoRaise(True)
-
-        # --- Content area (put any layout/widgets inside)
-        self.content_widget = QtWidgets.QWidget()
-        self.content_layout = QtWidgets.QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(12, 6, 6, 6)  # small indent like Maya
-        self.content_layout.setSpacing(4)
-        self.content_widget.setVisible(expanded)
-
-        # --- Main layout
-        main = QtWidgets.QVBoxLayout(self)
-        main.setContentsMargins(0, 0, 0, 0)
-        main.setSpacing(0)
-        main.addWidget(self.header_btn)
-        main.addWidget(self.content_widget)
-
-        self.header_btn.clicked.connect(self.set_expanded)
-
-    def set_expanded(self, expanded:bool):
-        self._expanded = bool(expanded)
-        self.content_widget.setVisible(self._expanded)
-        if self._expanded:
-            self.header_btn.setArrowType(QtCore.Qt.DownArrow)
-        else:
-            self.header_btn.setArrowType(QtCore.Qt.RightArrow)
-        self.toggled.emit(self._expanded)
-
-    def is_expanded(self) -> bool:
-        return self._expanded
     

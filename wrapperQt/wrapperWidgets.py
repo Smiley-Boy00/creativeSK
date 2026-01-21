@@ -6,7 +6,7 @@ class wrapWid():
         ''' Initializes the QWidget methods, parented to the called UI. '''
         self.parentUI=parentUI
 
-    def create_or_show_button(self, widgetID:str, label:str,
+    def create_button(self, widgetID:str, label:str,
                               parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                               enabled:bool=True, visible:bool=True,
                               margins:tuple[int,int,int,int]=(0,0,0,0),
@@ -28,7 +28,7 @@ class wrapWid():
             parentLayout.addWidget(buttonWidget)
         return buttonWidget
 
-    def create_or_show_arrowButton(self, widgetID:str, 
+    def create_arrowButton(self, widgetID:str, 
                                    parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                                    direction:str='left', enabled:bool=True, visible:bool=True, 
                                    iconSize:QtCore.QSize=QtCore.QSize(15,15),
@@ -56,7 +56,7 @@ class wrapWid():
             parentLayout.addWidget(arrowButtonWidget)
         return arrowButtonWidget
 
-    def create_or_show_numField(self, widgetID:str, parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+    def create_numField(self, widgetID:str, parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                                 type='int', label:str='', numVal:int|float=0, minVal:int|float=0, maxVal:int|float=10,
                                 enabled:bool=True, visible:bool=True, width=50,
                                 margins:tuple[int,int,int,int]=(0,0,0,0), 
@@ -93,7 +93,7 @@ class wrapWid():
             
         return fieldWidget
 
-    def create_or_show_textField(self, widgetID:str, 
+    def create_textField(self, widgetID:str, 
                                  parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout, 
                                  label:str|None=None, text:str='', placeholderText:str='', 
                                  enabled:bool=True, visible:bool=True, 
@@ -131,7 +131,7 @@ class wrapWid():
                 parentLayout.addWidget(fieldWidget)
         return fieldWidget
 
-    def create_or_show_checkbox(self, widgetID:str, label:str,
+    def create_checkbox(self, widgetID:str, label:str,
                                  parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                                  enabled:bool=True, visible:bool=True, value:bool=False, 
                                  gridSet:tuple[int,int]=(0,0), align=None,
@@ -156,11 +156,11 @@ class wrapWid():
             parentLayout.addWidget(checkboxWidget)
         return checkboxWidget
 
-    def create_or_show_radialButton(self, widgetID:str, label:str,
-                                    parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                                    enabled:bool=True, visible:bool=True, value:bool=False, 
-                                    gridSet:tuple[int,int]=(0,0), align=None,
-                                    clickedCmd=None):
+    def create_radialButton(self, widgetID:str, label:str,
+                            parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                            enabled:bool=True, visible:bool=True, value:bool=False, 
+                            gridSet:tuple[int,int]=(0,0), align=None,
+                            clickedCmd=None):
         ''' Returns a built or obtained QCheckBox widget based on the widgetID. '''
         
         radioButtonWidget=QtWidgets.QRadioButton(label, parent=self.parentUI)
@@ -181,7 +181,7 @@ class wrapWid():
             parentLayout.addWidget(radioButtonWidget)
         return radioButtonWidget
 
-    def create_or_show_slider(self, widgetID:str, 
+    def create_slider(self, widgetID:str, 
                         parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                         orientation:QtCore.Qt.Horizontal|QtCore.Qt.Vertical,
                         interval:int=1, value:int=0, minVal:int=0, maxVal:int=10,
@@ -209,7 +209,7 @@ class wrapWid():
             parentLayout.addWidget(sliderWidget)
         return sliderWidget
 
-    def create_or_show_label(self, widgetID:str, label:str,
+    def create_label(self, widgetID:str, label:str,
                              parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                              enabled:bool=True, visible:bool=True,
                              gridSet:tuple[int,int]=(0,0), align=None):

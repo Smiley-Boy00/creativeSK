@@ -14,8 +14,9 @@ importlib.reload(md)
 importlib.reload(wrapperWidgets)
 importlib.reload(wrapperLayouts)
 
-ORIGINAL_WIDTH=285
+ORIGINAL_WIDTH=385
 ORIGINAL_HEIGHT=110
+WINDOW_ID='creativeUIWindow'
 
 @QtCore.Slot()
 def tester():
@@ -25,32 +26,66 @@ def maya_main_window():
     mayaPtr=omui.MQtUtil.mainWindow()
     return wrapInstance(int(mayaPtr), QtWidgets.QWidget)
 
-# def dockable_creativeUI():
-#     dockInstance=creativeUI()
-#     dockInstance.show(dockable=True, area='right', 
-#                       floating=True, allowedArea='all')
-#     return dockInstance
+def show_creativeUI_widget(dock:bool=False, workspaceName:str='CreativeSkeletonsWorkspace'):
+    
+    if dock: # WIP to allow window to be dockable, currently works but window & widgets don't get resized  
+        if mc.workspaceControl(workspaceName, query=True, exists=True):
+            mc.deleteUI(workspaceName)
+
+        ctrl=mc.workspaceControl(workspaceName, label='Creative Skeletons',
+                                    dockToMainWindow=('right', 1), retain=False)
+        
+        qtCrtl=wrapInstance(int(omui.MQtUtil.findControl(ctrl)), QtWidgets.QWidget)
+        layout=qtCrtl.layout()
+        if layout is None:
+            layout = QtWidgets.QVBoxLayout(qtCrtl)
+            layout.setContentsMargins(0,0,0,0)
+
+        windowInstance=creativeUI(parent=qtCrtl)
+        layout.addWidget(windowInstance)
+        return windowInstance
+    else:
+        mayaWindow=maya_main_window()
+        # find any/all existing instances of the window & delete them
+        outdatedWin=mayaWindow.findChildren(QtWidgets.QWidget, WINDOW_ID)
+        if outdatedWin:
+            for winToDel in outdatedWin:
+                winToDel.setObjectName(f'outdated_{WINDOW_ID}')
+                winToDel.close()
+                winToDel.deleteLater()
+        windowInstance=creativeUI()
+        windowInstance.setWindowFlag(QtCore.Qt.WindowType.Window)
+        windowInstance.resize(ORIGINAL_WIDTH, ORIGINAL_HEIGHT)
+        windowInstance.show()
+        return windowInstance
 
 class creativeUI(QtWidgets.QWidget):
     ''' Base Interface class to handle maya skeleton creation with UI elements. '''
-    WINDOW_ID='creativeUIWindow'
     WINDOW_TITLE='creativeSkeletons v0.1'
 
     def __init__(self, parent=maya_main_window()):
         ''' Initialize the main window Display, set state alongside UI elements & dependencies. '''
         super(creativeUI, self).__init__(parent)
         self.layouts=wrapperLayouts.wrapLay(self) # call layout wrapper instance
-        self.frameLayouts=wrapperLayouts.collapsibleFrame
         self.widgets=wrapperWidgets.wrapWid(self) # call widget wrapper instance
-        self.setObjectName(self.WINDOW_ID)
-        self.setWindowFlags(QtCore.Qt.Window) # normal window (minimize, maximize and exit buttons)
-        self.setWindowTitle(self.WINDOW_TITLE)
-        self.resize(ORIGINAL_WIDTH, ORIGINAL_HEIGHT)
-        # build vertical layout; attach to window display
-        self.mainLayout=self.layouts.create_or_get_verticalLayout('mainLayout', spacing=5, contentMargins=(8,5,8,5))
-
         # store the directory path for icon file calls
         self.baseDirectory=os.path.dirname(__file__)
+        print(self.baseDirectory)
+        self.setObjectName(WINDOW_ID)
+        # self.setWindowFlags(QtCore.Qt.Window) # normal window (minimize, maximize and exit buttons)
+        self.setWindowTitle(self.WINDOW_TITLE)
+        # self.resize(ORIGINAL_WIDTH, ORIGINAL_HEIGHT)
+
+        # build vertical layout; attach to window display
+        self.mainLayout=self.layouts.create_or_get_verticalLayout('mainLayout', spacing=5, contentMargins=(8,5,8,5))
+        # build and set top icon buttons toolset
+        self.build_top_buttons_layout()
+
+        # build frame layout and look
+        self.cardFrame=QtWidgets.QFrame()
+        self.cardFrame.setObjectName('cardFrame')
+        self.mainLayout.addWidget(self.cardFrame)
+        self.cardLayout=self.layouts.create_or_get_verticalLayout('cardLayout', parentWidget=self.cardFrame, contentMargins=(5,5,5,5))
 
         # create tracking variables for locator joint creation, alongside layout display states
         self.sortedLocIDs=['none', 'none']
@@ -71,118 +106,106 @@ class creativeUI(QtWidgets.QWidget):
         self.aimWidgetID=['aimCheck', 'aimBtn']
 
         self.build_main_layout()
-
-    @classmethod
-    def show_window(cls):
-        ''' Wrapper method to delete window instances prior to showing the display. '''
-        mayaWindow=maya_main_window()
-        # find any/all existing instances of the window & delete them
-        outdatedWin=mayaWindow.findChildren(QtWidgets.QWidget, cls.WINDOW_ID)
-        if outdatedWin:
-            for winToDel in outdatedWin:
-                winToDel.setObjectName(f'outdated_{cls.WINDOW_ID}')
-                winToDel.close()
-                winToDel.deleteLater()
-        # create new instance of the window and show it
-        winInstance = cls()
-        winInstance.show()
-        return winInstance
+        self._apply_style()
 
     def build_main_layout(self):
         ''' Handles the construction of the main UI layout structure and its elements. '''
-        self.build_top_buttons_layout()
 
         # build aim constraint checkbox & related fields
-        aimForm=self.layouts.create_or_get_gridLayout('aimForm', parentLayout=self.mainLayout)
+        aimForm=self.layouts.create_or_get_gridLayout('aimForm', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
         aimForm.setAlignment(QtCore.Qt.AlignHCenter)
         self.mainLayout.addLayout(aimForm)
-        self.widgets.create_or_show_checkbox(self.aimWidgetID[0], 'Locator Aim Constraint', aimForm, 
+        self.widgets.create_checkbox(self.aimWidgetID[0], 'Locator Aim Constraint', aimForm, 
                                              clickedCmd=self.checkbox_aim_sequence)
         # initialize aim constraint related fields & buttons, hidden by default
         self.build_aim_layout()
 
         # build joint orientation & rotation order checkbox & related elements
-        orientForm=self.layouts.create_or_get_gridLayout('orientForm', parentLayout=self.mainLayout)
+        orientForm=self.layouts.create_or_get_gridLayout('orientForm', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
         orientForm.setAlignment(QtCore.Qt.AlignHCenter)
         self.mainLayout.addLayout(orientForm)
-        self.widgets.create_or_show_checkbox('orientCheck', 'Joint Orient | Rotation Order', orientForm, 
+        self.widgets.create_checkbox('orientCheck', 'Joint Orient | Rotation Order', orientForm, 
                                              clickedCmd=self.checkbox_orient_sequence)
         self.build_orient_layout()
 
         # build joint chain mirroring checkbox & related elements
-        mirrorCheckLayout=self.layouts.create_or_get_verticalLayout('mirrorCheckLayout', parentLayout=self.mainLayout)
+        mirrorCheckLayout=self.layouts.create_or_get_verticalLayout('mirrorCheckLayout', 
+                                                                    parentWidget=self.cardFrame, parentLayout=self.cardLayout)
         mirrorCheckForm=self.layouts.create_or_get_gridLayout('mirrorCheckForm', parentLayout=mirrorCheckLayout)
-        mirrorJntsCheck=self.widgets.create_or_show_checkbox('mirrorJntsCheck', 'Mirror Joints', mirrorCheckForm, 
-                                                              align=QtCore.Qt.AlignHCenter,
-                                                              clickedCmd=lambda *args:self.checkbox_mirror_sequence(mirrorJntsCheck.isChecked()))
+        mirrorJntsCheck=self.widgets.create_checkbox('mirrorJntsCheck', 'Mirror Joints', mirrorCheckForm,
+                                                     align=QtCore.Qt.AlignHCenter,
+                                                     clickedCmd=lambda *args:self.checkbox_mirror_sequence(mirrorJntsCheck.isChecked()))
         self.build_mirror_layout()
 
-        self.widgets.create_or_show_label('locPrefixSuffixLabel', 'Locator Prefix and Suffix names:', 
-                                          self.mainLayout, align=QtCore.Qt.AlignHCenter)
+        self.widgets.create_label('locPrefixSuffixLabel', 'Locator Prefix and Suffix names:', 
+                                  self.cardLayout, align=QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter)
         # build fields to set the locator prefix and suffix names
-        locPrefixSuffix=self.layouts.create_or_get_gridLayout('locPrefixSuffix', parentLayout=self.mainLayout,
+        locPrefixSuffix=self.layouts.create_or_get_gridLayout('locPrefixSuffix', parentWidget=self.cardFrame, parentLayout=self.cardLayout,
                                                               contentMargins=(45,0,45,0))
-        self.widgets.create_or_show_textField('locPrefixField', locPrefixSuffix,
-                                              placeholderText='Locator Prefix')
-        self.widgets.create_or_show_textField('locSuffixField', locPrefixSuffix, gridSet=(0,1),
-                                              placeholderText='Locator Suffix', text='_loc')
+        locPrefixSuffix.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter)
+        self.widgets.create_textField('locPrefixField', locPrefixSuffix,
+                                      placeholderText='Locator Prefix')
+        self.widgets.create_textField('locSuffixField', locPrefixSuffix, gridSet=(0,1),
+                                      placeholderText='Locator Suffix', text='_loc')
         
         # create grid layout for main fields & buttons
-        midLayout=self.layouts.create_or_get_gridLayout('midLayout', parentLayout=self.mainLayout)
-        startLocCheck=self.widgets.create_or_show_checkbox('startLocCheck', 'Select Locator', 
-                                                           midLayout, align=QtCore.Qt.AlignCenter, 
-                                                           clickedCmd=lambda args:self.checkbox_loc_sequence(startLocCheck.isChecked()))
-        endLocCheck=self.widgets.create_or_show_checkbox('endLocCheck', 'Select Locator', midLayout, 
-                                                         gridSet=(0,1), align=QtCore.Qt.AlignCenter,
-                                                         clickedCmd=lambda args:self.checkbox_loc_sequence(endLocCheck.isChecked(),
+        midLayout=self.layouts.create_or_get_gridLayout('midLayout', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
+        midLayout.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter)
+        startLocCheck=self.widgets.create_checkbox('startLocCheck', 'Select Locator', 
+                                                   midLayout, align=QtCore.Qt.AlignHCenter, 
+                                                   clickedCmd=lambda args:self.checkbox_loc_sequence(startLocCheck.isChecked()))
+        endLocCheck=self.widgets.create_checkbox('endLocCheck', 'Select Locator', midLayout, 
+                                                 gridSet=(0,1), align=QtCore.Qt.AlignHCenter,
+                                                 clickedCmd=lambda args:self.checkbox_loc_sequence(endLocCheck.isChecked(),
                                                                                                            sequenceID='end'))
         
         # build fields to set the locator names
-        self.widgets.create_or_show_textField('startLocField', midLayout, gridSet=(1,0),
+        self.widgets.create_textField('startLocField', midLayout, gridSet=(1,0),
                                               placeholderText='Start Locator Name', margins=(5,0,5,0))
-        self.widgets.create_or_show_textField('endLocField', midLayout, gridSet=(1,1),
+        self.widgets.create_textField('endLocField', midLayout, gridSet=(1,1),
                                               placeholderText='End Locator Name', margins=(5,0,5,0))
 
         # build buttons that handles the create or store locator modules 
-        self.widgets.create_or_show_button('startLocBtn', 'Create Start Locator', midLayout, gridSet=(2,0),
+        self.widgets.create_button('startLocBtn', 'Create Start Locator', midLayout, gridSet=(2,0),
                                            clickedCmd=lambda args:self.locator_btn_clicked())
-        self.widgets.create_or_show_button('endLocBtn', 'Create End Locator', midLayout, gridSet=(2,1), 
+        self.widgets.create_button('endLocBtn', 'Create End Locator', midLayout, gridSet=(2,1), 
                                            clickedCmd=lambda args:self.locator_btn_clicked('end'))
         
         # create joint chain related layouts, fields & buttons, hidden by default
-        parentConstLayout=self.layouts.create_or_get_gridLayout('parentConstLayout', parentLayout=self.mainLayout)
+        parentConstLayout=self.layouts.create_or_get_gridLayout('parentConstLayout', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
         parentConstLayout.setAlignment(QtCore.Qt.AlignHCenter)
-        self.widgets.create_or_show_checkbox('parentConstCheck', 'Locator to Joint Constraint', parentConstLayout, visible=False)
+        self.widgets.create_checkbox('parentConstCheck', 'Locator to Joint Constraint', parentConstLayout, visible=False)
 
         # create radio buttons to either set joint parenting methods or create joints without selection
-        parentJntLayout=self.layouts.create_or_get_gridLayout('parentJntLayout', parentLayout=self.mainLayout)
-        startParentCheck=self.widgets.create_or_show_radialButton('startParentCheck', 'Start from Selected Joint', 
-                                                                  parentJntLayout, enabled=False, visible=False)
-        continueParentCheck=self.widgets.create_or_show_radialButton('continueParentCheck', 'Parent to Selected Joint', 
-                                                                     parentJntLayout, enabled=False, visible=False,
-                                                                     gridSet=(0,1))
-        createJntLayout=self.layouts.create_or_get_gridLayout('createJntLayout', parentLayout=self.mainLayout)
-        createJntCheck=self.widgets.create_or_show_radialButton('createJntCheck', 'Create Joint without Selection', 
-                                                                createJntLayout, enabled=False, visible=False, value=True,
-                                                                align=QtCore.Qt.AlignHCenter)
+        parentJntLayout=self.layouts.create_or_get_gridLayout('parentJntLayout', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
+        startParentCheck=self.widgets.create_radialButton('startParentCheck', 'Start from Selected Joint', 
+                                                          parentJntLayout, enabled=False, visible=False,
+                                                          align=QtCore.Qt.AlignHCenter)
+        continueParentCheck=self.widgets.create_radialButton('continueParentCheck', 'Parent to Selected Joint', 
+                                                             parentJntLayout, enabled=False, visible=False,
+                                                             align=QtCore.Qt.AlignHCenter, gridSet=(0,1))
+        createJntLayout=self.layouts.create_or_get_gridLayout('createJntLayout', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
+        createJntCheck=self.widgets.create_radialButton('createJntCheck', 'Create Joint without Selection', 
+                                                        createJntLayout, enabled=False, visible=False, value=True,
+                                                        align=QtCore.Qt.AlignHCenter)
 
-        self.widgets.create_or_show_label('jntPrefixSuffixLabel', 'Joints Prefix and Suffix names:', 
-                                          self.mainLayout, visible=False,
-                                          align=QtCore.Qt.AlignHCenter)
+        self.widgets.create_label('jntPrefixSuffixLabel', 'Joints Prefix and Suffix names:', 
+                                  self.cardLayout, visible=False,
+                                  align=QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter)
         # build fields to set the joints prefix and suffix names
-        jntPrefixSuffix=self.layouts.create_or_get_gridLayout('jntPrefixSuffix', parentLayout=self.mainLayout,
+        jntPrefixSuffix=self.layouts.create_or_get_gridLayout('jntPrefixSuffix', parentWidget=self.cardFrame, parentLayout=self.cardLayout,
                                                               contentMargins=(45,0,45,0),)
-        self.widgets.create_or_show_textField('jntPrefixField', jntPrefixSuffix,
+        self.widgets.create_textField('jntPrefixField', jntPrefixSuffix,
                                               placeholderText='Joints Prefix', visible=False)
-        self.widgets.create_or_show_textField('jntSuffixField', jntPrefixSuffix, gridSet=(0,1),
+        self.widgets.create_textField('jntSuffixField', jntPrefixSuffix, gridSet=(0,1),
                                               placeholderText='Joints Suffix', text='_jnt',
                                               visible=False)
 
         # build joint name fields layout
-        jntNamesLayout=self.layouts.create_or_get_gridLayout('jntNamesLayout', parentLayout=self.mainLayout)
-        self.widgets.create_or_show_textField('jntStartField', jntNamesLayout, 
+        jntNamesLayout=self.layouts.create_or_get_gridLayout('jntNamesLayout', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
+        self.widgets.create_textField('jntStartField', jntNamesLayout, 
                                               placeholderText='Starting Joint Name', visible=False)
-        self.widgets.create_or_show_textField('jntEndField', jntNamesLayout, gridSet=(0,1),
+        self.widgets.create_textField('jntEndField', jntNamesLayout, gridSet=(0,1),
                                               placeholderText='Ending Joint Name', visible=False)
         # set connections to enable/disable starting joint name field based which radio button is selected
         startParentCheck.clicked.connect(lambda args:self.enable_jnt_nameField(False))
@@ -190,27 +213,26 @@ class creativeUI(QtWidgets.QWidget):
         createJntCheck.clicked.connect(lambda args:self.enable_jnt_nameField(True))
 
         # build joint count layout with slider and numeric field (SpinBox)
-        jntCountLayout=self.layouts.create_or_get_gridLayout('jntCountLayout', parentLayout=self.mainLayout)
-        self.mainLayout.addLayout(jntCountLayout)
-
-        countSliderWidth=200
+        jntCountLayout=self.layouts.create_or_get_gridLayout('jntCountLayout', parentWidget=self.cardFrame, parentLayout=self.cardLayout)
+        jntCountLayout.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter)
+        countSliderWidth=300
         jntCountLayout.setColumnMinimumWidth(0, countSliderWidth)
-        jntCountSlider=self.widgets.create_or_show_slider('jntCountSlider', jntCountLayout, QtCore.Qt.Horizontal,
-                                                          align=QtCore.Qt.AlignCenter, value=2, minVal=2,
-                                                          visible=False, enabled=False, width=countSliderWidth)
-        jntCountField=self.widgets.create_or_show_numField('jntCountField', jntCountLayout, gridSet=(0,1),
-                                                           align=QtCore.Qt.AlignCenter, numVal=2, minVal=2,
-                                                           visible=False, enabled=False, width=60)
+        jntCountSlider=self.widgets.create_slider('jntCountSlider', jntCountLayout, QtCore.Qt.Horizontal,
+                                                  align=QtCore.Qt.AlignHCenter, value=2, minVal=2,
+                                                  visible=False, enabled=False, width=countSliderWidth)
+        jntCountField=self.widgets.create_numField('jntCountField', jntCountLayout, gridSet=(0,1),
+                                                   align=QtCore.Qt.AlignHCenter, numVal=2, minVal=2,
+                                                   visible=False, enabled=False, width=60)
         # connect slider and spinbox numeric values together; reflects changes together
         jntCountSlider.valueChanged.connect(jntCountField.setValue)
         jntCountField.valueChanged.connect(jntCountSlider.setValue)
         jntCountField.valueChanged.connect(lambda *args: self.add_or_remove_jnt_nameFields(jntCountField.value()))
 
         # build button tho handle the buildJointChain module and resets UI
-        self.widgets.create_or_show_button('jntBuilderBtn', 'Create Joint Chain', self.mainLayout, enabled=False,
+        self.widgets.create_button('jntBuilderBtn', 'Create Joint Chain', self.cardLayout, enabled=False,
                                            clickedCmd=self.build_joint_chain)
 
-        self.widgets.create_or_show_button('commitBtn', 'Commit Joint Chain Structure',self.mainLayout, 
+        self.widgets.create_button('commitBtn', 'Commit Joint Chain Structure', self.cardLayout, 
                                            enabled=False, visible=False, clickedCmd=self.show_dialog_window)
         
         # build undo and redo buttons layout with their default state
@@ -222,14 +244,14 @@ class creativeUI(QtWidgets.QWidget):
                         border-radius: 3px;
                         background-color: #3a3a3a;
                         padding: 3px;}"""
-        self.widgets.create_or_show_arrowButton('undoArrow', arrowLayout, direction='left',
-                                                iconSize=QtCore.QSize(12, 12), styleSheet=arrowStyleSheet,
+        self.widgets.create_arrowButton('undoArrow', arrowLayout, direction='left',
+                                                iconSize=QtCore.QSize(8, 8), styleSheet=arrowStyleSheet,
                                                 enabled=False)
-        self.widgets.create_or_show_arrowButton('redoArrow', arrowLayout, direction='right',
-                                                iconSize=QtCore.QSize(12, 12), styleSheet=arrowStyleSheet,
+        self.widgets.create_arrowButton('redoArrow', arrowLayout, direction='right',
+                                                iconSize=QtCore.QSize(8, 8), styleSheet=arrowStyleSheet,
                                                 enabled=False, gridSet=(0,1))
 
-        self.resize_main_layout()
+        self.resize_layout(layout='card')
 
     def build_top_buttons_layout(self):
         ''' Handles the construction and display of the top right icon buttons. '''
@@ -273,64 +295,78 @@ class creativeUI(QtWidgets.QWidget):
 
     def build_aim_layout(self):
         ''' Handles the construction of the locator aim constraint layouts & related numeric fields. '''
+        # build frame layout and look
+        aimFrame=QtWidgets.QFrame()
+        aimFrame.setObjectName('aimFrame')
+        self.cardLayout.addWidget(aimFrame)
+        aimFrameLayout=self.layouts.create_or_get_verticalLayout('aimFrameLayout', parentWidget=aimFrame, 
+                                                                 contentMargins=(10,10,10,10))
         # create grid layout to place and align numeric fields
-        vectorLayout=self.layouts.create_or_get_gridLayout('vectorLayout', parentLayout=self.mainLayout)
+        vectorLayout=self.layouts.create_or_get_gridLayout('vectorLayout', parentWidget=aimFrame, 
+                                                           parentLayout=aimFrameLayout)
         vectorLayout.setColumnMinimumWidth(0, 50)
-        self.mainLayout.addLayout(vectorLayout)
 
         # create labels and numeric fields relating to each aim constraint parameters
-        self.widgets.create_or_show_label('aimLabel', 'Aim Vector:', vectorLayout,
+        self.widgets.create_label('aimLabel', 'Aim Vector:', vectorLayout,
                                           visible=False, align=QtCore.Qt.AlignRight)
-        self.widgets.create_or_show_numField(self.aimFieldID[0], vectorLayout, type='float', 
+        self.widgets.create_numField(self.aimFieldID[0], vectorLayout, type='float', 
                                              numVal=1, minVal=-10, enabled=False, visible=False,
                                              gridSet=(0,1))
-        self.widgets.create_or_show_numField(self.aimFieldID[1], vectorLayout, type='float', 
+        self.widgets.create_numField(self.aimFieldID[1], vectorLayout, type='float', 
                                              minVal=-10, enabled=False, visible=False,
                                              gridSet=(0,2))
-        self.widgets.create_or_show_numField(self.aimFieldID[2], vectorLayout, type='float', 
+        self.widgets.create_numField(self.aimFieldID[2], vectorLayout, type='float', 
                                              minVal=-10, enabled=False, visible=False,
                                              gridSet=(0,3))
         
-        self.widgets.create_or_show_label('upLabel', 'Up Vector:', vectorLayout,
+        self.widgets.create_label('upLabel', 'Up Vector:', vectorLayout,
                                           visible=False, align=QtCore.Qt.AlignRight,
                                           gridSet=(1,0))
-        self.widgets.create_or_show_numField(self.upFieldID[0], vectorLayout, type='float', 
+        self.widgets.create_numField(self.upFieldID[0], vectorLayout, type='float', 
                                              minVal=-10, enabled=False, visible=False, 
                                              gridSet=(1,1))
-        self.widgets.create_or_show_numField(self.upFieldID[1], vectorLayout, type='float',
+        self.widgets.create_numField(self.upFieldID[1], vectorLayout, type='float',
                                              numVal=1, minVal=-10, enabled=False, visible=False,
                                              gridSet=(1,2))
-        self.widgets.create_or_show_numField(self.upFieldID[2], vectorLayout, type='float',
+        self.widgets.create_numField(self.upFieldID[2], vectorLayout, type='float',
                                              minVal=-10, enabled=False, visible=False,
                                              gridSet=(1,3))
         
-        self.widgets.create_or_show_label('wupLabel', 'World Up Vector:', vectorLayout,
+        self.widgets.create_label('wupLabel', 'World Up Vector:', vectorLayout,
                                           visible=False, align=QtCore.Qt.AlignRight,
                                           gridSet=(2,0))
-        self.widgets.create_or_show_numField(self.wupFieldID[0], vectorLayout, type='float',
+        self.widgets.create_numField(self.wupFieldID[0], vectorLayout, type='float',
                                              minVal=-10, enabled=False, visible=False,
                                              gridSet=(2,1))
-        self.widgets.create_or_show_numField(self.wupFieldID[1], vectorLayout, type='float',
+        self.widgets.create_numField(self.wupFieldID[1], vectorLayout, type='float',
                                              numVal=1, minVal=-10, enabled=False, visible=False,
                                              gridSet=(2,2))
-        self.widgets.create_or_show_numField(self.wupFieldID[2], vectorLayout, type='float',
+        self.widgets.create_numField(self.wupFieldID[2], vectorLayout, type='float',
                                              minVal=-10, enabled=False, visible=False,
                                              gridSet=(2,3))
 
         # build button to handle the aimLocators module
-        self.widgets.create_or_show_button(self.aimWidgetID[1], 'Set Aim Constraint', self.mainLayout, 
+        self.widgets.create_button(self.aimWidgetID[1], 'Set Aim Constraint', aimFrameLayout, 
                                            enabled=False, visible=False,
                                            clickedCmd=self.aim_locators)
+        aimFrame.setVisible(False)
 
     def build_orient_layout(self):
         ''' Handles the construction of the joint orientation and rotation order layouts & related elements. '''
-        self.widgets.create_or_show_label('orientJntLabel', 'Joint Orientation & Secondary Axis:', 
-                                          self.mainLayout, visible=False, 
-                                          align=QtCore.Qt.AlignHCenter)
+        # build frame layout and look
+        orientFrame=QtWidgets.QFrame()
+        orientFrame.setObjectName('orientFrame')
+        self.cardLayout.addWidget(orientFrame)
+        orientFrameLayout=self.layouts.create_or_get_verticalLayout('orientFrameLayout', parentWidget=orientFrame, 
+                                                                    contentMargins=(10,10,10,10))
+
+        self.widgets.create_label('orientJntLabel', 'Joint Orientation & Secondary Axis:',
+                                  orientFrameLayout, visible=False, 
+                                  align=QtCore.Qt.AlignHCenter)
 
         # create layout for joint orientation menus
-        orientJntLayout=self.layouts.create_or_get_gridLayout('orientJntLayout', parentLayout=self.mainLayout)
-        self.mainLayout.addLayout(orientJntLayout)
+        orientJntLayout=self.layouts.create_or_get_gridLayout('orientJntLayout', parentWidget=orientFrame, 
+                                                              parentLayout=orientFrameLayout)
 
         # create joint orientation menus with their corresponding option items
         orientJntMenu=QtWidgets.QComboBox()
@@ -346,40 +382,49 @@ class creativeUI(QtWidgets.QWidget):
         orientJntLayout.addWidget(secOrientMenu, 0, 1)
 
         # create joint orientation related checkboxes and button
-        orientCheckLayout=self.layouts.create_or_get_gridLayout('orientCheckLayout', parentLayout=self.mainLayout)
-        self.widgets.create_or_show_checkbox('orientChildCheck', 'Orient Children', 
+        orientCheckLayout=self.layouts.create_or_get_gridLayout('orientCheckLayout', parentWidget=orientFrame, 
+                                                                parentLayout=orientFrameLayout)
+        self.widgets.create_checkbox('orientChildCheck', 'Orient Children', 
                                              orientCheckLayout, align=QtCore.Qt.AlignHCenter,
                                              enabled=False, visible=False, value=True)
 
-        self.widgets.create_or_show_checkbox('orientWorldCheck', 'Orient to World', 
+        self.widgets.create_checkbox('orientWorldCheck', 'Orient to World', 
                                              orientCheckLayout, align=QtCore.Qt.AlignHCenter,
                                              enabled=False, visible=False, gridSet=(1,0))
         
-        self.widgets.create_or_show_button('orientBtn', 'Set Joint Orientation', self.mainLayout, 
+        self.widgets.create_button('orientBtn', 'Set Joint Orientation', orientFrameLayout, 
                                            enabled=False, visible=False,
                                            clickedCmd=self.orient_bnt_clicked)
 
-        self.widgets.create_or_show_label('rotOrderLabel', 'Joint Rotation Order:', 
-                                          self.mainLayout, visible=False, 
-                                          align=QtCore.Qt.AlignHCenter)
+        self.widgets.create_label('rotOrderLabel', 'Joint Rotation Order:',
+                                  orientFrameLayout, visible=False,
+                                  align=QtCore.Qt.AlignHCenter)
 
         # create joint rotation order menus with their corresponding option items
-        rotOrderLayout=self.layouts.create_or_get_gridLayout('rotOrderLayout', parentLayout=self.mainLayout)
-        self.mainLayout.addLayout(rotOrderLayout)
+        rotOrderLayout=self.layouts.create_or_get_gridLayout('rotOrderLayout', parentWidget=orientFrame, 
+                                                             parentLayout=orientFrameLayout)
         rotOrderMenu=QtWidgets.QComboBox()
         rotOrderMenu.setObjectName('rotOrderMenu')
         rotOrderMenu.addItems(['xyz', 'yzx', 'zxy', 'zyx', 'yxz', 'xzy'])
         rotOrderMenu.hide()
         rotOrderLayout.addWidget(rotOrderMenu)
-        self.widgets.create_or_show_button('rotOrderBtn', 'Set Joint Rotation Order', self.mainLayout, 
-                                           enabled=False, visible=False,
-                                           clickedCmd=self.joints_rotOrder)
+        self.widgets.create_button('rotOrderBtn', 'Set Joint Rotation Order', orientFrameLayout, 
+                                   enabled=False, visible=False,
+                                   clickedCmd=self.joints_rotOrder)
+        orientFrame.setVisible(False)
 
     def build_mirror_layout(self):
         ''' Handles the construction of the joint mirroring related elements. '''
-        self.widgets.create_or_show_label('mirrorLabels', 'Mirror across | Mirror Function', self.mainLayout,
+        # build frame layout and look
+        mirrorFrame=QtWidgets.QFrame()
+        mirrorFrame.setObjectName('mirrorFrame')
+        self.cardLayout.addWidget(mirrorFrame)
+        mirrorFrameLayout=self.layouts.create_or_get_verticalLayout('mirrorFrameLayout', parentWidget=mirrorFrame, 
+                                                                    contentMargins=(10,10,10,10))
+        self.widgets.create_label('mirrorLabels', 'Mirror across | Mirror Function', mirrorFrameLayout,
                                           visible=False, align=QtCore.Qt.AlignHCenter)
-        mirrorMenuLayout=self.layouts.create_or_get_gridLayout('mirrorMenuLayout', parentLayout=self.mainLayout)
+        mirrorMenuLayout=self.layouts.create_or_get_gridLayout('mirrorMenuLayout', parentWidget=mirrorFrame, 
+                                                             parentLayout=mirrorFrameLayout)
 
         mirrorAxisMenu=QtWidgets.QComboBox()
         mirrorAxisMenu.setObjectName('mirrorAxisMenu')
@@ -393,17 +438,21 @@ class creativeUI(QtWidgets.QWidget):
         mirrorFuncMenu.setVisible(False)
         mirrorMenuLayout.addWidget(mirrorFuncMenu, 0, 1)
 
-        self.widgets.create_or_show_label('replaceLabels', 'Replacement Names', self.mainLayout,
+        self.widgets.create_label('replaceLabels', 'Replacement Names', mirrorFrameLayout,
                                           visible=False, align=QtCore.Qt.AlignHCenter)
 
-        mirrorFieldsLayout=self.layouts.create_or_get_gridLayout('mirrorFieldsLayout', parentLayout=self.mainLayout)
-        self.widgets.create_or_show_textField('searchField', mirrorFieldsLayout, 
-                                              label='Search for:', visible=False)
-        self.widgets.create_or_show_textField('replaceField', mirrorFieldsLayout, gridSet=(0,1),
-                                              label='Replace with:', visible=False)
+        mirrorFieldsLayout=self.layouts.create_or_get_gridLayout('mirrorFieldsLayout', parentWidget=mirrorFrame, 
+                                                             parentLayout=mirrorFrameLayout)
+        self.widgets.create_textField('searchField', mirrorFieldsLayout, 
+                                      label='Search for:', placeholderText='search',
+                                      visible=False)
+        self.widgets.create_textField('replaceField', mirrorFieldsLayout, gridSet=(0,1),
+                                      placeholderText='replace', label='Replace with:', 
+                                      visible=False)
 
-        self.widgets.create_or_show_button('mirrorJntsBtn', 'Mirror Joints', self.mainLayout,
-                                           visible=False, clickedCmd=self.mirror_joints)
+        self.widgets.create_button('mirrorJntsBtn', 'Create Mirror Joints', mirrorFrameLayout,
+                                   visible=False, clickedCmd=self.mirror_joints)
+        mirrorFrame.setVisible(False)
 
     def add_or_remove_jnt_nameFields(self, fieldAmount:int):
         ''' Handles the cyclical addition/removal of joint name fields based on a count value. '''
@@ -418,7 +467,7 @@ class creativeUI(QtWidgets.QWidget):
         self.jntMidFields.clear()
 
         for fieldNum in range(1, (midFields)+1):
-            jntMidField=self.widgets.create_or_show_textField(f'jntMidField{fieldNum:02d}', jntNamesLayout, 
+            jntMidField=self.widgets.create_textField(f'jntMidField{fieldNum:02d}', jntNamesLayout, 
                                                               placeholderText=f'Middle {fieldNum:02d} Joint Name',
                                                               gridSet=(0, fieldNum))
             lastField=fieldNum
@@ -459,7 +508,7 @@ class creativeUI(QtWidgets.QWidget):
                 jntPrefixSuffixLabel.setVisible(True)
                 jntPrefixField.setVisible(True)
                 jntSuffixField.setVisible(True)
-        self.resize_main_layout()
+        self.resize_layout(layout='card')
 
     def show_or_hide_joint_count(self, hideLayout=False, hideButton=False):
         ''' Toggles the joint count layout visibility, handles locator data reset. '''
@@ -522,7 +571,7 @@ class creativeUI(QtWidgets.QWidget):
             self.show_or_hide_prefixSuffix_fields(fields='jnt')
             self.jntLayoutDisplayed=True
 
-        self.resize_main_layout()
+        self.resize_layout(layout='card')
 
     def show_or_hide_commitLayout(self, hide=False):
         ''' Toggles the commit button visibility. '''
@@ -531,17 +580,23 @@ class creativeUI(QtWidgets.QWidget):
         if hide:
             commitBtn.setVisible(False)
             commitBtn.setDisabled(True)
-            self.resize_main_layout()
         else:
             commitBtn.setVisible(True)
             commitBtn.setEnabled(True)
-            self.resize_main_layout()
+        self.resize_layout(layout='card')
 
-    def resize_main_layout(self):
-        ''' Forces the main layout to recompute its original size based on visible elements. '''
-        self.mainLayout.invalidate()
-        self.mainLayout.activate()
-        self.resize(ORIGINAL_WIDTH, ORIGINAL_HEIGHT)
+    def resize_layout(self, layout='main'):
+        ''' Forces the main & secondary layout to recompute its original size based on visible elements. '''
+        available_layouts=('main', 'card')
+        if layout not in available_layouts:
+            raise ValueError(f'{layout} is not an available layout, use: {available_layouts}')
+        targetLayout=self.mainLayout if layout == 'main' else self.cardLayout
+
+        targetLayout.invalidate()
+        targetLayout.activate()
+
+        self.updateGeometry()
+        self.adjustSize()
 
     def delete_data(self):
         ''' Clears the locator and joint tracking properties. '''
@@ -723,6 +778,7 @@ class creativeUI(QtWidgets.QWidget):
                    self.findChild(QtWidgets.QLabel, 'wupLabel')]
         if checked:
             # show and enable aim constraint layout elements
+            self.findChild(QtWidgets.QFrame, 'aimFrame').setVisible(True)
             for label in labelObjs:
                 label.setVisible(True)
             for field in fieldIDs:
@@ -732,6 +788,7 @@ class creativeUI(QtWidgets.QWidget):
             self.findChild(QtWidgets.QPushButton, self.aimWidgetID[1]).setEnabled(True)
         else:
             # hide and disable aim constraint layout elements, recompute main layout size
+            self.findChild(QtWidgets.QFrame, 'aimFrame').setVisible(False)
             for label in labelObjs:
                 label.setVisible(False)
             for field in fieldIDs:
@@ -739,11 +796,12 @@ class creativeUI(QtWidgets.QWidget):
                 self.findChild(QtWidgets.QDoubleSpinBox, field).setDisabled(True)
             self.findChild(QtWidgets.QPushButton, self.aimWidgetID[1]).setVisible(False)
             self.findChild(QtWidgets.QPushButton, self.aimWidgetID[1]).setDisabled(True)
-            self.resize_main_layout()
+        self.resize_layout(layout='card')
 
     def checkbox_orient_sequence(self, checked:bool):
         ''' Shows or hides the joint orientation & rotation order menus based on checkbox state. '''
         # find and store joint orientation related layout & its child widgets
+        orientFrame=self.findChild(QtWidgets.QFrame, 'orientFrame')
         orientJntLabel=self.findChild(QtWidgets.QLabel, 'orientJntLabel')
         orientChildCheck=self.findChild(QtWidgets.QCheckBox, 'orientChildCheck')
         orientWorldCheck=self.findChild(QtWidgets.QCheckBox, 'orientWorldCheck')
@@ -755,11 +813,14 @@ class creativeUI(QtWidgets.QWidget):
         rotOrderBtn=self.findChild(QtWidgets.QPushButton, 'rotOrderBtn')
 
         if checked:
+            orientFrame.setVisible(True)
+
             orientJntLabel.setVisible(True)
             orientChildCheck.setVisible(True)
             orientChildCheck.setEnabled(True)
             orientWorldCheck.setVisible(True)
             orientWorldCheck.setEnabled(True)
+
             orientJntMenu.setVisible(True)
             secOrientMenu.setVisible(True)
             orientJntBtn.setVisible(True)
@@ -769,11 +830,14 @@ class creativeUI(QtWidgets.QWidget):
             rotOrderBtn.setVisible(True)
             rotOrderBtn.setEnabled(True)
         else:
+            orientFrame.setVisible(False)
+
             orientJntLabel.setVisible(False)
             orientChildCheck.setVisible(False)
             orientChildCheck.setDisabled(True)
             orientWorldCheck.setVisible(False)
             orientWorldCheck.setDisabled(True)
+
             orientJntMenu.setVisible(False)
             secOrientMenu.setVisible(False)
             orientJntBtn.setVisible(False)
@@ -782,10 +846,12 @@ class creativeUI(QtWidgets.QWidget):
             rotOrderMenu.setVisible(False)
             rotOrderBtn.setVisible(False)
             rotOrderBtn.setDisabled(True)
-            self.resize_main_layout()
+
+        self.resize_layout(layout='card')
 
     def checkbox_mirror_sequence(self, checked:bool):
         ''' Shows or hides the joint mirroring related fields based on checkbox state. '''
+        mirrorFrame=self.findChild(QtWidgets.QFrame, 'mirrorFrame')
         mirrorLabel=self.findChild(QtWidgets.QLabel, 'mirrorLabels')
         mirrorAxisMenu=self.findChild(QtWidgets.QComboBox, 'mirrorAxisMenu')
         mirrorFuncMenu=self.findChild(QtWidgets.QComboBox, 'mirrorFuncMenu')
@@ -795,6 +861,8 @@ class creativeUI(QtWidgets.QWidget):
         mirrorJntsBtn=self.findChild(QtWidgets.QPushButton, 'mirrorJntsBtn')
 
         if checked:
+            mirrorFrame.setVisible(True)
+
             mirrorLabel.setVisible(True)
             mirrorAxisMenu.setVisible(True)
             mirrorFuncMenu.setVisible(True)
@@ -803,6 +871,8 @@ class creativeUI(QtWidgets.QWidget):
             replaceFieldForm.setRowVisible(0, True)
             mirrorJntsBtn.setVisible(True)
         else:
+            mirrorFrame.setVisible(False)
+
             mirrorLabel.setVisible(False)
             mirrorAxisMenu.setVisible(False)
             mirrorFuncMenu.setVisible(False)
@@ -810,7 +880,8 @@ class creativeUI(QtWidgets.QWidget):
             searchFieldForm.setRowVisible(0, False)
             replaceFieldForm.setRowVisible(0, False)
             mirrorJntsBtn.setVisible(False)
-            self.resize_main_layout()
+
+        self.resize_layout(layout='card')
 
     def enable_jnt_nameField(self, value:bool=True):
         ''' Enables or disables the starting joint name field based on bool value for radio buttons. '''
@@ -1219,15 +1290,15 @@ class creativeUI(QtWidgets.QWidget):
         infoText='Commit to Joint Structure?\n' \
                 'Important: Commit removes parent and aim constraint from Joints and Locators respectively.\n' \
                 'Start and End Joint create a parent constraint to their respective Locator.'
-        self.widgets.create_or_show_label('dialogInfoText', infoText, dialogLayout, align=QtCore.Qt.AlignHCenter)
+        self.widgets.create_label('dialogInfoText', infoText, dialogLayout, align=QtCore.Qt.AlignHCenter)
 
         # create buttons to confirm or deny process, aligned to the right side of the window
         buttonLayout=self.layouts.create_or_get_gridLayout('buttonLayout', dialogWindow)
         buttonLayout.setAlignment(QtCore.Qt.AlignRight)
         dialogLayout.addLayout(buttonLayout)
 
-        self.widgets.create_or_show_button('backBtn', 'Continue Editing', buttonLayout, clickedCmd=self.close_dialog_window)
-        self.widgets.create_or_show_button('confirmBtn', 'Confirm', buttonLayout, gridSet=(0,1), 
+        self.widgets.create_button('backBtn', 'Continue Editing', buttonLayout, clickedCmd=self.close_dialog_window)
+        self.widgets.create_button('confirmBtn', 'Confirm', buttonLayout, gridSet=(0,1), 
                                            clickedCmd=self.commit_jnt_structure)
 
         dialogWindow.show()
@@ -1238,6 +1309,239 @@ class creativeUI(QtWidgets.QWidget):
         if dialogWindows:
             for outdated in dialogWindows:
                 outdated.close()
+
+    def _apply_style(self):
+        mainBG="#222325"
+        cardBG="#222325"
+
+        buttonBG="#B4753A"
+        buttonPress="#995E26"
+
+        boxBG="#6B6866"
+        boxFrame="#8C8886"
+
+        frameColor="#C07733"
+        accent="#D7CEC5"
+        
+        disabledColor="#2C3035"
+        disabledText="#5E636A"
+
+        checkIcon=os.path.join(self.baseDirectory, 'creativeLibrary', 
+                               'icons', 'menuIconSelect_24.png')
+        checkIcon.replace('\\', '/')
+        print(checkIcon)
+        aim='aimConstraint.png'
+        orient='orientJoint.png'
+
+        self.setStyleSheet(f"""
+        QWidget#{WINDOW_ID} {{
+            background: {mainBG};
+            border: 1px solid #3a3d44;
+            border-radius: 5px;
+        }}
+        QFrame#cardFrame {{
+            background: {cardBG};
+            border: 2px solid #3a3d44;
+            border-radius: 10px;
+            border-top: 2px solid {frameColor};
+            border-bottom: 2px solid {frameColor};
+        }}
+
+        QFrame#aimFrame {{
+            background: {cardBG};
+            border: 2px dashed #3a3d44;
+            border-radius: 10px;
+            border-top: 2px solid {frameColor};
+            border-bottom: 2px solid {frameColor};
+        }}
+        QFrame#orientFrame {{
+            background: {cardBG};
+            border: 2px dashed #3a3d44;
+            border-radius: 10px;
+            border-top: 2px solid {frameColor};
+            border-bottom: 2px solid {frameColor};
+        }}
+        QFrame#mirrorFrame {{
+            background: {cardBG};
+            border: 2px dashed #3a3d44;
+            border-radius: 10px;
+            border-top: 2px solid {frameColor};
+            border-bottom: 2px solid {frameColor};
+        }}
+
+        QLabel {{
+            font-size: 13px;
+            color: #ffffff;
+        }}
+
+        QCheckBox {{
+            spacing: 4.5px;
+            font-size: 13px;
+            color: #FFFFFF;
+        }}
+        QCheckBox:hover {{
+            color: {accent};
+        }}
+        QCheckBox::indicator {{
+            width: 11px;
+            height: 11px;
+            background-color: {boxBG};
+            border-radius: 2px;
+            border: 1px solid {frameColor};
+        }}
+        QCheckBox::indicator:hover {{
+            border: 1px solid {accent};
+        }}
+        QCheckBox::indicator:checked {{
+            image: url(:/UVEditorIsolate.png);
+        }}
+
+        QRadioButton {{
+            spacing: 4.5px;
+            font-size: 12px;
+            color: #FFFFFF;
+        }}
+        QRadioButton:hover {{
+            color: {accent};
+        }}
+        QRadioButton::indicator {{
+            width: 10px;
+            height: 10px;
+            background-color: {boxBG};
+            border-radius: 5px;
+            border: 1px solid {frameColor};
+        }}
+        QRadioButton::indicator:hover {{
+            border: 1px solid {accent};
+        }}
+        QRadioButton::indicator:checked {{
+            width: 10px;
+            height: 10px;
+            background-color: {accent};
+            border-radius: 5px;
+            border-color: gray;
+        }}
+
+        QLineEdit {{
+            font-size: 13px;
+            border: 2px solid {boxFrame};
+            background: {boxBG};
+            border-radius: 12px;
+            padding: 6px 10px;
+            color: #ffffff;
+            selection-background-color: {accent};
+        }}
+        QLineEdit:focus {{
+            border: 2px solid {accent};
+        }}
+        QLineEdit:disabled {{
+            background: {disabledColor};
+            border: 2px solid {disabledColor};
+            color: {disabledText};
+        }}
+
+        QPushButton {{
+            font-size: 13px;
+            border: 2px solid {frameColor};
+            background: {buttonBG};
+            border-radius: 8px;
+            padding: 7px 12px;
+            color: #ffffff;
+        }}
+        QPushButton:hover {{
+            border: 2px solid {accent};
+        }}
+        QPushButton:pressed {{
+            background: {buttonPress};
+        }}
+        QPushButton:disabled {{
+            background: {disabledColor};
+            border: 2px solid {disabledColor};
+            color: {disabledText};
+        }}
+
+        QComboBox {{
+            font-size: 13px;
+            border: 2px solid {boxFrame};
+            background: {boxBG};
+            border-radius: 5px;
+            color: #ffffff;
+        }}
+        QComboBox:hover {{
+            border: 2px solid {accent};
+        }}
+        QComboBox:focus {{
+            border: 2px solid {accent};
+        }}
+        QComboBox:disabled {{
+            background: {disabledColor};
+            border: 2px solid {disabledColor};
+            color: {disabledText};
+        }}
+        QComboBox::down-arrow {{
+            width: 8px;
+            height: 8px;
+            color: #ffffff;
+        }}
+
+        QComboBox QAbstractItemView {{
+            background: {mainBG};
+            color: #ffffff;
+            selection-background-color: {buttonBG};
+            border: 1px solid #3a3d44;
+        }}
+
+        QSpinBox {{
+            font-size: 11px;
+            border: 1px solid {frameColor};
+            background: {boxBG};
+            border-radius: 5px;
+            color: #ffffff;
+            selection-background-color: {buttonBG};
+        }}
+        QSpinBox:focus {{
+            border: 1px solid {accent};
+        }}
+        QSpinBox:disabled {{
+            background: {disabledColor};
+            border: 1px solid {disabledColor};
+            color: {disabledText};
+        }}
+
+        QDoubleSpinBox {{
+            font-size: 11px;
+            border: 1px solid {frameColor};
+            background: {boxBG};
+            border-radius: 5px;
+            color: #ffffff;
+            selection-background-color: {buttonBG};
+        }}
+        QDoubleSpinBox:focus {{
+            border: 1px solid {accent};
+        }}
+        QDoubleSpinBox:disabled {{
+            background: {disabledColor};
+            border: 1px solid {disabledColor};
+            color: {disabledText};
+        }}
+
+        QSlider::groove:horizontal{{
+            height: 4px;
+            background: #ffffff;
+            border-radius: 2px;
+        }}
+        QSlider::handle:horizontal{{
+            width: 16px;
+            height: 16px;
+            margin: -6px 0;
+            background: {buttonBG};
+            border: 2px solid {frameColor};
+            border-radius: 6px;
+        }}
+        QSlider::handle:horizontal:hover {{
+            border: 2px solid {accent};
+        }}
+        """)
 
     def _reset_arrow_connections(self):
         ''' Private method to disconnect undo/redo arrow button signals for repeated use. '''

@@ -4,8 +4,7 @@ import importlib
 
 def run_creativeUI(*args):
     importlib.reload(creativeUI)
-    skeletonUI=creativeUI.creativeUI()
-    skeletonUI.show_window()
+    creativeUI.show_creativeUI_widget()
 
 creativeSkeletonsMenu = mc.menu('creativeSkeletonsMenu', label = 'Creative Skeletons', parent = 'MayaWindow', tearOff = True)
 
