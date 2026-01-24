@@ -32,6 +32,20 @@ def createLocator(name:str,
     cmds.select(clear=True)
     return locObjID
 
+def clusterLocParent(selectionLs:list, clusterName:str, locObj:str):
+    ''' 
+    Creates single cluster based on the selection list to point constrain a locator to it.
+    Deletes cluster after constraint.
+    '''
+    # use flatten flag to store selection values a sequential list (i.e. vtx[], vtx[], vtx[])
+    dataSelection=cmds.ls(selectionLs, flatten=True)
+    if not dataSelection:
+        return None
+    clusterObj=cmds.cluster(dataSelection, name=f'{clusterName}_cls')
+    # constrain locator to cluster position then delete constraint
+    cmds.pointConstraint(clusterObj, locObj)
+    cmds.delete(clusterObj)
+
 def buildJointChain(startVector:om.MPoint, endVector:om.MPoint, 
                     jntNames:list=['start', 'end'],
                     jntNums:int=2, parentJnt=None, 
@@ -124,20 +138,6 @@ def aimLocators(locStartName:str, locEndName:str,
     # create negative aim vector for end locator to aim at start locator
     negAimVector=[val*(-1) for val in aimVector]
     cmds.aimConstraint(locStartName, locEndName, aim=negAimVector, u=upVector, wu=worldUpVector)
-
-def clusterLocParent(selectionLs:list, clusterName:str, locObj:str):
-    ''' 
-    Creates single cluster based on the selection list to point constrain a locator to it.
-    Deletes cluster after constraint.
-    '''
-    # use flatten flag to store selection values a sequential list (i.e. vtx[], vtx[], vtx[])
-    dataSelection=cmds.ls(selectionLs, flatten=True)
-    if not dataSelection:
-        return None
-    clusterObj=cmds.cluster(dataSelection, name=f'{clusterName}_cls')
-    # constrain locator to cluster position then delete constraint
-    cmds.pointConstraint(clusterObj, locObj)
-    cmds.delete(clusterObj)
 
 def jointLocParent(jntName:str, locName:str):
     ''' 

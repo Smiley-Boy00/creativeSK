@@ -595,8 +595,9 @@ class creativeUI(QtWidgets.QWidget):
         targetLayout.invalidate()
         targetLayout.activate()
 
-        self.updateGeometry()
+        # self.updateGeometry()
         self.adjustSize()
+        self.resize(ORIGINAL_WIDTH, ORIGINAL_HEIGHT)
 
     def delete_data(self):
         ''' Clears the locator and joint tracking properties. '''
@@ -1046,6 +1047,9 @@ class creativeUI(QtWidgets.QWidget):
             locatorSelection=mc.ls(selection=True)
             if not locatorSelection:
                 mc.warning('No locator selection made.')
+                return
+            if len(locatorSelection)!=2:
+                mc.warning('Selection most only be 2 locators.')
                 return
             # validate that exactly two locators have been selected
             startLocShp=mc.nodeType(mc.listRelatives(locatorSelection[0], s=True)[0])

@@ -12,7 +12,7 @@ class creativeLocNode(omui.MPxLocatorNode):
     ''' Custom Locator containing viewport rendering privileges. '''
     TYPE_ID = om.MTypeId(0x0007f7f8)
     TYPE_NAME = "cLocator"
-    DRAW_CLASSIFICATION = "drawdb/geometry/cLocator"
+    DRAW_CLASSIFICATION = "drawdb/geometry/locator"
     DRAW_REGISTRANT_ID = "creativeLocNode"
 
     def __init__(self):
@@ -181,14 +181,14 @@ def initializePlugin(plugin):
                                om.MPxNode.kLocatorNode, 
                                creativeLocNode.DRAW_CLASSIFICATION)
     except:
-        om.MGlobal(f'Failed to register node: {creativeLocNode.TYPE_NAME}')
+        om.MGlobal.displayError(f'Failed to register node: {creativeLocNode.TYPE_NAME}')
 
     try:
         omr.MDrawRegistry.registerDrawOverrideCreator(creativeLocNode.DRAW_CLASSIFICATION, 
                                                       creativeLocNode.DRAW_REGISTRANT_ID,
                                                       creativeLocDrawOverride.creator)
     except:
-        om.MGlobal(f'Failed to register draw override: {creativeLocDrawOverride.NAME}')
+        om.MGlobal.displayError(f'Failed to register draw override: {creativeLocDrawOverride.NAME}')
 
     pluginPath=pluginFn.loadPath() # change to pluginFn.loadPath() for public release
     if pluginPath not in sys.path:
@@ -203,22 +203,11 @@ def uninitializePlugin(plugin):
         omr.MDrawRegistry.deregisterDrawOverrideCreator(creativeLocNode.DRAW_CLASSIFICATION, 
                                                         creativeLocNode.DRAW_REGISTRANT_ID)
     except:
-        om.MGlobal(f'Failed to deregister draw override: {creativeLocDrawOverride.NAME}')
+        om.MGlobal.displayError(f'Failed to deregister draw override: {creativeLocDrawOverride.NAME}')
 
     try:
         pluginFn.deregisterNode(creativeLocNode.TYPE_ID)
     except:
-        om.MGlobal(f'Failed to deregister node: {creativeLocNode.TYPE_NAME}')
+        om.MGlobal.displayError(f'Failed to deregister node: {creativeLocNode.TYPE_NAME}')
     if cmds.menu('creativeSkeletonsMenu', exists=True):
         cmds.deleteUI('creativeSkeletonsMenu', menu=True)
-
-# testing and debugging purposes
-# if __name__ == "__main__":
-#     cmds.file(new=True, force=True)
-#     plugin_name = "creativeSkeletons.py"
-#     cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name))
-#     cmds.evalDeferred('if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
-
-#     cmds.evalDeferred('cmds.polyCube(w=20, h=20, d=20)')
-#     cmds.evalDeferred('cmds.createNode("cLocator")')
-#     cmds.evalDeferred('cmds.scale(10,10,10,"transform1")')
