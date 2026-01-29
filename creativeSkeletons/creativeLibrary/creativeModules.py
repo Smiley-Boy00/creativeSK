@@ -6,12 +6,18 @@ import os
 
 def createLocator(name:str, 
                   prefix:str|None=None, suffix:str|None=None,
-                  locScale=5):
+                  locScale:float=5):
     ''' 
     Creates a cluster object from the provided selection list and
     constrains a newly created locator to the cluster position. 
     Returns the locator transform name. 
     '''
+    if prefix:
+        # add prefix string to locator 
+        name=prefix+name
+    if suffix:
+        # add suffix string to locator
+        name+=suffix
     # create custom locator and obtain its transform node
     locShp=cmds.createNode('cLocator', name=f'{name}_loc_shp')
     locTrn=cmds.listRelatives(locShp, parent=True)[0]
@@ -19,12 +25,6 @@ def createLocator(name:str,
     scaleID=['localScaleX', 'localScaleY', 'localScaleZ']
     for id in scaleID:
         cmds.setAttr(f'{locShp}.{id}', locScale)
-    if prefix:
-        # add prefix string to locator 
-        name=prefix+name
-    if suffix:
-        # add suffix string to locator
-        name+=suffix
     # store full name in ID 
     locObjID=name
     # rename locator's transform
@@ -50,7 +50,7 @@ def buildJointChain(startVector:om.MPoint, endVector:om.MPoint,
                     jntNames:list=['start', 'end'],
                     jntNums:int=2, parentJnt=None, 
                     orientJoint:str='xyz', secAxisOrient:str='yup', 
-                    rotationOrder:str='xyz', jntsRad:int=3,
+                    rotationOrder:str='xyz', jntsRad:float=3,
                     prefix:str|None=None, suffix:str|None=None,
                     overrideColor:int|None=None):
     ''' Creates a joint chain between two provided locator positions. '''
@@ -158,7 +158,7 @@ def jointLocParent(jntName:str, locName:str):
     cmds.parentConstraint(jntName, locName)
 
 def mirrorJoints(mirrorAxis:str='YZ', mirrorFunc:str='Behavior',
-                 search:str='', replace:str=''):
+                 search:str='', replace:str='', includeLocators:bool=False):
     ''' 
     Sets up joint mirroring based on provided axis and function. 
     Returns a list of the newly created mirrored joint chain.
@@ -167,8 +167,8 @@ def mirrorJoints(mirrorAxis:str='YZ', mirrorFunc:str='Behavior',
     if mirrorAxis not in mirrorAxisVal or mirrorFunc not in mirrorFuncVal:
         raise ValueError('Wrong value given for mirrorAxis or mirrorFunc')
     
-    jointSelection=cmds.ls(selection=True, type='joint')
-    if not jointSelection:
+    jntSelection=cmds.ls(selection=True, type='joint')
+    if not jntSelection:
         return None
 
     searchReplace=(search, replace)
@@ -182,6 +182,28 @@ def mirrorJoints(mirrorAxis:str='YZ', mirrorFunc:str='Behavior',
     
     cmds.select(hi=True)
     mirroredChain=cmds.ls(selection=True, type='joint')
+    
+    if includeLocators:
+        mirroredSet={}
+        # select joint hierarchy
+        cmds.select(jntSelection, hi=True)
+        jntChain=cmds.ls(selection=True, type='joint')
+        for i, jnt in enumerate(jntChain):
+            constraints=cmds.listConnections(jnt, type='parentConstraint')
+            for constraint in constraints:
+                node=cmds.listConnections(constraint)[0]
+                nodeShp=cmds.listRelatives(node, type='shape')[0]
+                if cmds.nodeType(nodeShp)=='cLocator' or cmds.nodeType(nodeShp)=='locator':
+                    mirroredSet[mirroredChain[i]]=[node.replace(search, replace), cmds.getAttr(f'{nodeShp}.localScaleX')]
+                    break
+        print(mirroredSet)
+        if mirroredSet:
+            # create each mirrored locator
+            for jnt in mirroredSet:
+                locName=mirroredSet.get(jnt)[0]
+                locScale=mirroredSet.get(jnt)[1]
+                createLocator(locName, locScale=locScale)
+                jointLocParent(jnt, locName)
     
     return mirroredChain
 
