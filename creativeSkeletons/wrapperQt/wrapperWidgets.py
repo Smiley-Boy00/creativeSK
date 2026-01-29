@@ -7,10 +7,10 @@ class wrapWid():
         self.parentUI=parentUI
 
     def create_button(self, widgetID:str, label:str,
-                              parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                              enabled:bool=True, visible:bool=True,
-                              margins:tuple[int,int,int,int]=(0,0,0,0),
-                              gridSet:tuple[int,int]=(0,0), clickedCmd=None):
+                      parentLayout:QtWidgets.QFormLayout|QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                      enabled:bool=True, visible:bool=True,
+                      margins:tuple[int,int,int,int]=(0,0,0,0),
+                      gridSet:tuple[int,int]=(0,0), clickedCmd=None):
         ''' Returns a built or obtained QPushButton widget based on the widgetID. '''
 
         buttonWidget=QtWidgets.QPushButton(label, parent=self.parentUI)
@@ -29,10 +29,10 @@ class wrapWid():
         return buttonWidget
 
     def create_arrowButton(self, widgetID:str, 
-                                   parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                                   direction:str='left', enabled:bool=True, visible:bool=True, 
-                                   iconSize:QtCore.QSize=QtCore.QSize(15,15),
-                                   styleSheet:str='', gridSet:tuple[int,int]=(0,0)):
+                           parentLayout:QtWidgets.QFormLayout|QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                           direction:str='left', enabled:bool=True, visible:bool=True, 
+                           iconSize:QtCore.QSize=QtCore.QSize(15,15),
+                           styleSheet:str='', gridSet:tuple[int,int]=(0,0)):
         ''' Returns a built or obtained QToolButton as an arrow widget based on the widgetID. '''
 
         arrow_types={'left':QtCore.Qt.LeftArrow, 'right':QtCore.Qt.RightArrow,
@@ -57,10 +57,10 @@ class wrapWid():
         return arrowButtonWidget
 
     def create_numField(self, widgetID:str, parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                                type='int', label:str='', numVal:int|float=0, minVal:int|float=0, maxVal:int|float=10,
-                                enabled:bool=True, visible:bool=True, width=50,
-                                margins:tuple[int,int,int,int]=(0,0,0,0), 
-                                gridSet:tuple[int,int]=(0,0), align=None):
+                        type='int', label:str='', numVal:int|float=0, minVal:int|float=0, maxVal:int|float=10,
+                        enabled:bool=True, visible:bool=True, width=50,
+                        margins:tuple[int,int,int,int]=(0,0,0,0), 
+                        gridSet:tuple[int,int]=(0,0), align=None):
         ''' Returns a built or obtained QSpinBox or QDoubleSpinBox widget based on the widgetID. '''
 
         available_type=['int', 'float']
@@ -79,26 +79,34 @@ class wrapWid():
         fieldWidget.setValue(numVal)
         fieldWidget.setMinimumWidth(width)
         fieldWidget.setContentsMargins(*margins)
-        if align:
-            fieldWidget.setAlignment(align)
-        if not visible:
-            fieldWidget.hide()
         fieldWidget.setEnabled(enabled)
-        formLayout=QtWidgets.QFormLayout()
-        formLayout.addRow(label, fieldWidget)
-        if isinstance(parentLayout, QtWidgets.QGridLayout):
-            parentLayout.addLayout(formLayout, gridSet[0], gridSet[1])
+        if label:
+            formLayout=QtWidgets.QFormLayout()
+            formLayout.setObjectName(f'{widgetID}Form')
+            formLayout.addRow(label, fieldWidget)
+            if not visible:
+               formLayout.setRowVisible(0, False)
+            if align:
+                formLayout.setFormAlignment(align)
+            if isinstance(parentLayout, QtWidgets.QGridLayout):
+                parentLayout.addLayout(formLayout, gridSet[0], gridSet[1])
+            else:
+                parentLayout.addLayout(formLayout)
         else:
-            parentLayout.addLayout(formLayout)
-            
+            fieldWidget.hide()
+
+            if isinstance(parentLayout, QtWidgets.QGridLayout):
+                parentLayout.addWidget(fieldWidget, gridSet[0], gridSet[1])
+            else:
+                parentLayout.addWidget(fieldWidget)
         return fieldWidget
 
     def create_textField(self, widgetID:str, 
-                                 parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout, 
-                                 label:str|None=None, text:str='', placeholderText:str='', 
-                                 enabled:bool=True, visible:bool=True, 
-                                 margins:tuple[int,int,int,int]=(0,0,0,0), 
-                                 gridSet:tuple[int,int]=(0,0), align=None):
+                         parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout, 
+                         label:str|None=None, text:str='', placeholderText:str='', 
+                         enabled:bool=True, visible:bool=True, 
+                         margins:tuple[int,int,int,int]=(0,0,0,0), 
+                         gridSet:tuple[int,int]=(0,0), align=None):
         ''' Returns a built or obtained QLineEdit widget based on the widgetID. '''
         
         fieldWidget=QtWidgets.QLineEdit()
@@ -132,10 +140,10 @@ class wrapWid():
         return fieldWidget
 
     def create_checkbox(self, widgetID:str, label:str,
-                                 parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                                 enabled:bool=True, visible:bool=True, value:bool=False, 
-                                 gridSet:tuple[int,int]=(0,0), align=None,
-                                 clickedCmd=None):
+                        parentLayout:QtWidgets.QFormLayout|QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                        enabled:bool=True, visible:bool=True, value:bool=False, 
+                        gridSet:tuple[int,int]=(0,0), align=None,
+                        clickedCmd=None):
         ''' Returns a built or obtained QCheckBox widget based on the widgetID. '''
         
         checkboxWidget=QtWidgets.QCheckBox(label, parent=self.parentUI)
@@ -157,7 +165,7 @@ class wrapWid():
         return checkboxWidget
 
     def create_radialButton(self, widgetID:str, label:str,
-                            parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                            parentLayout:QtWidgets.QFormLayout|QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
                             enabled:bool=True, visible:bool=True, value:bool=False, 
                             gridSet:tuple[int,int]=(0,0), align=None,
                             clickedCmd=None):
@@ -182,11 +190,11 @@ class wrapWid():
         return radioButtonWidget
 
     def create_slider(self, widgetID:str, 
-                        parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                        orientation:QtCore.Qt.Horizontal|QtCore.Qt.Vertical,
-                        interval:int=1, value:int=0, minVal:int=0, maxVal:int=10,
-                        enabled:bool=True, visible:bool=True, width=50,
-                        gridSet:tuple[int,int]=(0,0), align=None):
+                      parentLayout:QtWidgets.QFormLayout|QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                      orientation:QtCore.Qt.Horizontal|QtCore.Qt.Vertical,
+                      interval:int=1, value:int=0, minVal:int=0, maxVal:int=10,
+                      enabled:bool=True, visible:bool=True, width=50,
+                      gridSet:tuple[int,int]=(0,0), align=None):
         ''' Returns a built or obtained QSlider widget based on the widgetID. '''
         
         sliderWidget=QtWidgets.QSlider(orientation, parent=self.parentUI)
@@ -210,9 +218,9 @@ class wrapWid():
         return sliderWidget
 
     def create_label(self, widgetID:str, label:str,
-                             parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
-                             enabled:bool=True, visible:bool=True,
-                             gridSet:tuple[int,int]=(0,0), align=None):
+                     parentLayout:QtWidgets.QBoxLayout|QtWidgets.QGridLayout,
+                     enabled:bool=True, visible:bool=True,
+                     gridSet:tuple[int,int]=(0,0), align=None):
         ''' Returns a built or obtained QLabel widget based on the widgetID. '''
 
         labelWidget=QtWidgets.QLabel(label, parent=self.parentUI)
