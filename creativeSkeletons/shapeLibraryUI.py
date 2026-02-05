@@ -53,11 +53,11 @@ class shapeLibraryUI:
         self.circleShape = mc.iconTextRadioButton(image1=os.path.join(self.baseDirectory, 'creativeLibrary',
                                                                       'imgs', 'Circle.jpg'), label='circle',
                                                                       style='iconAndTextVertical', onc=self.set_circle_shape, 
-                                                   collection=self.shapeRadioCollection)
+                                                   collection=self.shapeRadioCollection, parent=self.shapeGridLayout)
         self.squareShape = mc.iconTextRadioButton(image1=os.path.join(self.baseDirectory, 'creativeLibrary',
                                                                       'imgs', 'Square.jpg'), label='square',
                                                                       style='iconAndTextVertical', onc=self.set_square_shape, 
-                                                   collection=self.shapeRadioCollection)
+                                                   collection=self.shapeRadioCollection, parent=self.shapeGridLayout)
         self.update_shapes_ui()
 
         midLayout = mc.columnLayout(adjustableColumn=True, parent=self.mainLayout,
@@ -182,7 +182,7 @@ class shapeLibraryUI:
             customShape = mc.iconTextRadioButton(image1=os.path.join(self.baseDirectory, 'creativeLibrary',
                                                                      'imgs', f'{shapeLabel}.jpg'), label=shapeLabel, 
                                                                      style='iconAndTextVertical', onc=self.set_custom_shape, 
-                                                 collection=self.shapeRadioCollection)
+                                                 collection=self.shapeRadioCollection, parent=self.shapeGridLayout)
             self.popup_menu(shapeLabel, customShape)
             self._customShapeList.append(customShape)
   
@@ -306,6 +306,7 @@ class shapeLibraryUI:
         svr.save_selected_shape((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 
                                 (os.path.join(self.baseDirectory, 'creativeLibrary', 'imgs')), 
                                 customLabel=custom_shapeLabel, activeCamera=activeCam, currentBG=currentBG)
+        mc.deleteUI('SAVESHAPE')
         self.update_shapes_ui()
 
     def set_circle_shape(self, *args):
