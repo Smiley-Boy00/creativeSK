@@ -50,7 +50,7 @@ This project is part of an ongoing rigging and tooling portfolio focused on syst
 
 ## :bookmark_tabs: How to Install
 
-> - Extract **creativeSK** and place the folder contents into your Maya directory folder and inside your plug-ins folder, if no plug-ins folder exists create one:
+> - Extract **creativeSK** and place the folder contents inside your Maya directory plug-ins folder, if no plug-ins folder exists create one:
 **/maya/plug-ins** (this directory is usually found in the Documents folder).
 > - Place **out_cLocator.png** icon inside **/maya/prefs/icons**, create onne if it doesn't exist.
 > - Inside Maya, go to **Windows -> Settings/Preferences -> Plug-in Manager**.
