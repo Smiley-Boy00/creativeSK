@@ -1,8 +1,6 @@
-# Creative Skeletons
+![Alt text](https://github.com/Smiley-Boy00/Smiley-Boy00/blob/main/Resources/creativeSK_Banner.png?raw=true)
 ![Python](https://img.shields.io/badge/python-ffdd54?logo=python&logoColor=white) ![Autodesk Maya 2025+](https://img.shields.io/badge/Autodesk%20Maya%202025+-00AEEF?logo=autodesk&logoColor=white) ![Latest Commit](https://img.shields.io/github/last-commit/Smiley-Boy00/creativeSK) [![Latest Release](https://img.shields.io/github/v/release/Smiley-Boy00/creativeSK?label=Download&color=37A5CC)](https://github.com/Smiley-Boy00/creativeSK/releases/latest) ![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white) ![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)
 ![Free for Commercial Use](https://img.shields.io/badge/Free%20for%20Commercial%20Use-✔-brightgreen) ![No Resale](https://img.shields.io/badge/Do%20Not%20Resale-✖-red)
-
-*Procedural Joint Builder and Rig Planning Tool for Autodesk Maya*
 
 ## Table of Contents
 - [About](#fax-about)
@@ -15,6 +13,7 @@
 - [Contacts](#-contacts)
 
 ## :fax: About
+*Procedural Joint Builder and Rig Planning Tool for Autodesk Maya* </br>
 Creative Skeletons is a Python driven joint chain builder designed to help plan, validate, and construct skeletons in a consistent and scalable way inside Maya.  
 The tool focuses on rig integrity, automation, and repeatable workflows rather than manual joint placement.
 
@@ -29,7 +28,8 @@ This project is part of an ongoing rigging and tooling portfolio focused on syst
 
 ## :bulb: Tool Source Code and Details
 ### Current Release: v0.1.0
-### Maya Tools Source Code: v0.1
+### Skeleton Builder: v0.1.1
+### Shape Library: v0.2.0
 
 ## Core Features
 
