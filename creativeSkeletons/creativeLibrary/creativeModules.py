@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import os
 
+# maya modules dependent functions
 def createLocator(name:str, 
                   prefix:str|None=None, suffix:str|None=None,
                   locScale:float=5):
@@ -207,6 +208,55 @@ def mirrorJoints(mirrorAxis:str='YZ', mirrorFunc:str='Behavior',
     
     return mirroredChain
 
+def getJointLength(childJoints:list):
+    ''' Finds the control's orientation based on the joint children. '''
+    if len(childJoints) < 2: # joint has only one child
+        # get the absolute values of the joint's position/location
+        childJointPos = (abs(cmds.getAttr(childJoints[0] + '.translateX')),
+                         abs(cmds.getAttr(childJoints[0] + '.translateY')),
+                         abs(cmds.getAttr(childJoints[0] + '.translateZ')))
+        
+        # analyze the max translation value and set the rotation axis for the controller curve 
+        jointLength = max(childJointPos)
+        if childJointPos.index(jointLength) == 0:
+            # curve rotation in x-axis
+            curveRotation = (0, 0, 90)
+        if childJointPos.index(jointLength) == 1:
+            # no curve rotation, y-axis
+            curveRotation = (0, 0, 0)
+        if childJointPos.index(jointLength) == 2:
+            # curve rotation in z-axis
+            curveRotation = (90, 0, 0)
+    
+    else: # joint has multiple children
+        # get list comprehension of each axis absolute position value for each child joint
+        childJointPosX = [abs(cmds.getAttr(jnt + '.translateX')) for jnt in childJoints]
+        childJointPosY = [abs(cmds.getAttr(jnt + '.translateY')) for jnt in childJoints]
+        childJointPosZ = [abs(cmds.getAttr(jnt + '.translateZ')) for jnt in childJoints]
+        
+        # get the absolute values of the joint's position/location based on the sum divided by the amount of all child joints
+        childJointPos = [sum(childJointPosX)/len(childJointPosX),
+                         sum(childJointPosY)/len(childJointPosY),
+                         sum(childJointPosZ)/len(childJointPosZ)]
+        
+        # analyze the max translation value and set the rotation axis for the controller curve 
+        jointLength = max(childJointPos)
+        if childJointPos.index(jointLength) == 0:
+            # curve rotation in x-axis
+            curveRotation = (0, 0, 90)
+        if childJointPos.index(jointLength) == 1:
+            # no curve rotation, y-axis
+            curveRotation = (0, 0, 0)
+        if childJointPos.index(jointLength) == 2:
+            # curve rotation in z-axis
+            curveRotation = (90, 0, 0)
+
+    # check if length is 0 
+    if jointLength < 0.1:
+        jointLength = 1.0
+        
+    return (jointLength, curveRotation)
+
 def savePositions(vertSelectionList:list, setName:str):
     '''
     Returns a position set created from the vertex selection. 
@@ -238,7 +288,6 @@ def getVertPositions(selection:list):
         # verts_pos.sort()
         return verts_pos
 
-# maya modules dependent functions
 def move_to_origin(mesh) -> None:
     ''' Moves the provided mesh to the world origin (0,0,0) using its rotate pivot. '''
     cmds.move(0,0,0, mesh, rotatePivotRelative = True)
