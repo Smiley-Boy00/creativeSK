@@ -208,7 +208,7 @@ def mirrorJoints(mirrorAxis:str='YZ', mirrorFunc:str='Behavior',
     
     return mirroredChain
 
-def getJointLength(childJoints:list):
+def getCurveRotation(childJoints:list):
     ''' Finds the control's orientation based on the joint children. '''
     if len(childJoints) < 2: # joint has only one child
         # get the absolute values of the joint's position/location
@@ -255,7 +255,7 @@ def getJointLength(childJoints:list):
     if jointLength < 0.1:
         jointLength = 1.0
         
-    return (jointLength, curveRotation)
+    return curveRotation
 
 def savePositions(vertSelectionList:list, setName:str):
     '''
@@ -288,17 +288,7 @@ def getVertPositions(selection:list):
         # verts_pos.sort()
         return verts_pos
 
-def move_to_origin(mesh) -> None:
-    ''' Moves the provided mesh to the world origin (0,0,0) using its rotate pivot. '''
-    cmds.move(0,0,0, mesh, rotatePivotRelative = True)
-
-def place_mesh_back(values, mesh) -> None:
-    ''' Moves the provided mesh back to its original position using provided values. '''
-    cmds.move(values[0],
-            values[1],
-            values[2], mesh, absolute=True)
-    
-def get_root_jnts() -> list:
+def getRootJoints() -> list:
     ''' Returns a list of root joints found in the current scene. '''
     scene_joints=cmds.ls(type='joint')
 
@@ -314,7 +304,7 @@ def get_root_jnts() -> list:
 
     return root_joints
 
-def select_root_jnt(root_jnt:str, contains_list:bool=False, jnts:list=[]) -> None:
+def selectRootJnt(root_jnt:str, contains_list:bool=False, jnts:list=[]) -> None:
     ''' 
     Checks root joint exists and selects it.
     Contains_list must be True to deselect provided joint list.
@@ -332,7 +322,7 @@ def select_root_jnt(root_jnt:str, contains_list:bool=False, jnts:list=[]) -> Non
         cmds.select(root_jnt, add=True)
         print(f'{root_jnt} Selected')
 
-def get_unused_joints_in_hier(root_jtns:list):
+def getUnusedJoints(root_jtns:list):
     unbinded_jnts={}
     for root_jnt in root_jtns:
         if cmds.nodeType(root_jnt) != 'joint':
@@ -359,7 +349,7 @@ def get_unused_joints_in_hier(root_jtns:list):
 
     return unbinded_jnts
 
-def bind_unused_joints(root_jnts_data:dict):
+def bindUnusedJoints(root_jnts_data:dict):
     for root_jnt in root_jnts_data:
         connections=cmds.listConnections(f'{root_jnt}.worldMatrix[0]', type='skinCluster')
         print(connections)
@@ -369,8 +359,8 @@ def bind_unused_joints(root_jnts_data:dict):
             cmds.skinCluster(connected_cluster, edit=True, 
                            addInfluence=unbinded_joint, 
                            weight=0.0, lockWeights=False)
-
-def get_skinned_meshes(selection:list) -> list:
+            
+def getSkinnedMeshes(selection:list) -> list:
         ''' Returns a list of skinned meshes from the provided selection. '''
         skinned_meshes=[]
 
@@ -390,7 +380,7 @@ def get_skinned_meshes(selection:list) -> list:
 
         return skinned_meshes
 
-def del_non_deform_history(mesh_sl:list) -> None:
+def delNonDeformHistory(mesh_sl:list) -> None:
     ''' Deletes non-deformer history of the provided selection list. '''
     for obj in mesh_sl:
         if cmds.nodeType(obj) != 'mesh':
@@ -398,8 +388,18 @@ def del_non_deform_history(mesh_sl:list) -> None:
         # deletes the non-derformer history of the selected mesh
         cmds.bakePartialHistory(obj, prePostDeformers=True)
 
+def moveToOrigin(mesh) -> None:
+    ''' Moves the provided mesh to the world origin (0,0,0) using its rotate pivot. '''
+    cmds.move(0,0,0, mesh, rotatePivotRelative = True)
+
+def placeObjBack(values, mesh) -> None:
+    ''' Moves the provided mesh back to its original position using provided values. '''
+    cmds.move(values[0],
+            values[1],
+            values[2], mesh, absolute=True)    
+
 # data handling related functions
-def save_data(path:str, file_name:str, data) -> None:
+def saveData(path:str, file_name:str, data) -> None:
     ''' Saves data into a json file: must include a path to store data. '''
     if not file_name.endswith('.json'):
         file_name+='.json'
@@ -407,7 +407,7 @@ def save_data(path:str, file_name:str, data) -> None:
     with open(os.path.join(path, file_name), 'w') as file:
         json.dump(data, file, indent=4, sort_keys=True)
 
-def load_data(path:str, file_name:str) -> dict:
+def loadData(path:str, file_name:str) -> dict:
     ''' Loads a path data (dictionary) from a json file. '''
     with open(os.path.join(path, file_name), 'r') as file:
         stored_data = json.load(file)
@@ -415,12 +415,12 @@ def load_data(path:str, file_name:str) -> dict:
     return stored_data
 
 # directory related functions
-def get_documents_folder() -> str:
+def getDocumentsFolder() -> str:
     ''' Finds the documents path inside the user's home directory. '''
     documents_path = os.path.join(str(Path.home()), 'Documents')
     return documents_path
 
-def path_exists(file_path: str) -> bool:
+def pathExists(file_path: str) -> bool:
     ''' Checks if a path or file path exists. '''
     if os.path.exists(file_path):
         return True

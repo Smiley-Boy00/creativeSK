@@ -414,7 +414,7 @@ class shapeLibraryUI:
                     
                 print(ctrl)
                 if mc.checkBox('rotateCurveCheck', query=True, value=True):
-                    jointLength, curveRot=md.getJointLength(childJoints)
+                    curveRot=md.getCurveRotation(childJoints)
 
                     if curveRot != (0,0,0):
                         mc.rotate(curveRot[0], curveRot[1], curveRot[2], ctrl+'.cv[*]', os=True, relative=True)
