@@ -9,7 +9,7 @@
 - [Tool Source Code and Details](#bulb-tool-source-code-and-details)
 - [Core Features](#core-features)
 - [Workflow](#workflow)
-- [Roadmap](#roadmap)
+- [Installation](#bookmark_tabs-how-to-install)
 - [Project Status](#project-status)
 - [Feedback](#speech_balloon-feedback)
 - [Contacts](#-contacts)
@@ -28,7 +28,7 @@ The tool focuses on rig integrity, automation, and repeatable workflows rather t
 This project is part of an ongoing rigging and tooling portfolio focused on system driven rig development using Maya Python and the OpenMaya API.
 
 ## :bulb: Tool Source Code and Details
-### Current Release: TBD
+### Current Release: v0.1.0
 ### Maya Tools Source Code: v0.1
 
 ## Core Features
@@ -48,12 +48,13 @@ This project is part of an ongoing rigging and tooling portfolio focused on syst
 4. Build joints automatically from the locator data  
 5. Iterate safely without breaking the system  
 
-## Roadmap
+## :bookmark_tabs: How to Install
 
-• Validation and error reporting  
-• Metadata driven joint rules  
-• Integration with future rig modules  
-• Expanded API level control  
+> - Extract **creativeSK** and place the folder contents into your Maya directory folder and inside your plug-ins folder, if no plug-ins folder exists create one:
+**/maya/plug-ins** (this directory is usually found in the Documents folder).
+> - Place **out_cLocator.png** icon inside **/maya/prefs/icons**, create onne if it doesn't exist.
+> - Inside Maya, go to **Windows -> Settings/Preferences -> Plug-in Manager**.
+> - In the **Plug-in Manager** enable the **MtoU.py** plugin, a tab named "Exporter Tools" should appear where you can start utilizing the MtoU exporter.
 
 ## Project Status
 
