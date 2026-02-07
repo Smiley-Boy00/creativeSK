@@ -27,9 +27,9 @@ The tool focuses on rig integrity, automation, and repeatable workflows rather t
 This project is part of an ongoing rigging and tooling portfolio focused on system driven rig development using Maya Python and the OpenMaya API.
 
 ## :bulb: Tool Source Code and Details
-### Current Release: v0.1.0
+### Current Release: v0.1.1
 ### Skeleton Builder: v0.1.1
-### Shape Library: v0.2.0
+### Shape Library: v0.2.1
 
 ## Core Features
 
