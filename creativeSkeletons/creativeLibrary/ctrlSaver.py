@@ -1,6 +1,6 @@
+from ..creativeLibrary import creativeModules as md
+from ..creativeLibrary import screenShot as ss
 import maya.cmds as mc
-import library.modules as md
-import library.screenShot as ss
 import importlib
 import os
 
@@ -31,7 +31,7 @@ def save_selected_shape(dataPath, imgPath, customLabel=None, activeCamera=False,
                 saveData={}
 
             else:
-                saveData=md.load_data(dataPath, 'shapesCV_Data.json')
+                saveData=md.loadData(dataPath, 'shapesCV_Data.json')
 
             ctrlCV = {}
             posCV = {}
@@ -74,7 +74,7 @@ def save_selected_shape(dataPath, imgPath, customLabel=None, activeCamera=False,
             print(saveData)
 
             # write data into json
-            md.save_data(dataPath, 'shapesCV_Data.json', saveData)
+            md.saveData(dataPath, 'shapesCV_Data.json', saveData)
             
         else:
             mc.warning('Make sure your selection is a nurbsCurve Shape')

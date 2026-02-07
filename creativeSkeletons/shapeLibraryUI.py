@@ -169,7 +169,7 @@ class shapeLibraryUI:
     
     def update_shapes_ui(self, *args):
         ''' Restarts the shape frame icon library (container) inside the main UI window. '''
-        shapeData = md.load_data((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
+        shapeData = md.loadData((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
 
         for i in self._customShapeList:
             mc.deleteUI(i, control=True)
@@ -325,7 +325,7 @@ class shapeLibraryUI:
             mc.warning('Select a shape to create.')
             return
         
-        shapeData = md.load_data((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
+        shapeData = md.loadData((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
 
         # query the input settings for creation
         shapeName = mc.textFieldGrp(self.nameTextField, query=True, text=True)
@@ -350,7 +350,6 @@ class shapeLibraryUI:
             
         else:
             shapeColor = mc.palettePort(self.colorPalette, query=True, rgb=True) 
-
 
         if self.selectedShapeLabel == 'circle':
             ctrl=shp.circleShape(name=full_shapeName, radius=ctrlSize, typeOverride=shapeColor)
@@ -379,7 +378,7 @@ class shapeLibraryUI:
             mc.warning('Please select joints in order to create controllers.')
             return
         
-        shapeData = md.load_data((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
+        shapeData = md.loadData((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
 
         ctrlSize = mc.intSliderGrp(self.scaleValue, query=True, value=True)
 

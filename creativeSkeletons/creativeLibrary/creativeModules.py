@@ -1,3 +1,4 @@
+from ..creativeLibrary import shapes as shp
 import maya.api.OpenMaya as om
 import maya.cmds as cmds
 from pathlib import Path
@@ -256,6 +257,169 @@ def getCurveRotation(childJoints:list):
         jointLength = 1.0
         
     return curveRotation
+
+def setIKFKSwitch(jntConstraintSelection:list, switchControl, 
+                  fkControls:list|None=None, ikControls:list|None=None):
+    for jntConstraint in jntConstraintSelection:
+        if cmds.nodeType(jntConstraint) == 'parentConstraint':
+            print(jntConstraint)
+            attrs=cmds.attributeInfo(jntConstraint, all=True)
+            attrs.reverse()
+            for attr in attrs:
+                if 'ik' in attr.lower():
+                    cmds.select(switchControl)
+                    if 'ik' not in cmds.attributeInfo(switchControl, all=True):
+                        cmds.addAttr(shortName='ik', defaultValue=0, minValue=0, maxValue=1, attributeType="short", k=True)
+                    cmds.connectAttr(f'{switchControl}.ik', f'{jntConstraint}.{attr}')
+                    cmds.select(cl=True)
+                    break
+            for attr in attrs:
+                if 'fk' in attr.lower():
+                    cmds.select(switchControl)
+                    if 'fk' not in cmds.attributeInfo(switchControl, all=True):
+                        cmds.addAttr(shortName='fk', defaultValue=1, minValue=0, maxValue=1, attributeType="short")
+                    cmds.connectAttr(f'{switchControl}.fk', f'{jntConstraint}.{attr}')
+                    cmds.select(cl=True)
+                    break
+    cmds.expression(s=f'{switchControl}.fk = 1 - {switchControl}.ik', name='ikSwitch')
+    if fkControls:
+        for ctrl in fkControls:
+            cmds.connectAttr(f'{switchControl}.fk', f'{ctrl}.visibility')
+    if ikControls:
+        for ctrl in ikControls:
+            cmds.connectAttr(f'{switchControl}.ik', f'{ctrl}.visibility')
+
+def createIKHandle(handleName:str, jointStart, jointEnd, poleTarget=None, 
+                   ikCtrl=None, colorIndex:int=6, jntNameStr='jnt', distance=10, ctrlSize=4, 
+                   shapeDirectory=None):
+    if cmds.objectType(jointStart) != 'joint' or cmds.objectType(jointEnd) != 'joint':
+        return None
+    
+    cmds.ikHandle(startJoint=jointStart, endEffector=jointEnd, name=handleName)
+    if ikCtrl:
+        cmds.parent(handleName, ikCtrl)
+
+    if poleTarget and cmds.objectType(poleTarget) == 'joint':
+        if not shapeDirectory:
+             shapeDirectory=os.path.join(cmds.pluginInfo('creativeSkeletons.py', query=True, path=True).strip('.py'), 
+                                         'creativeLibrary', 'data')
+        shapeData=loadData(shapeDirectory, 'shapesCV_Data.json')
+
+        if jntNameStr in poleTarget:
+            ctrlName=poleTarget.replace(jntNameStr, 'ctrl')
+        else:
+            ctrlName=poleTarget+'_ctrl'
+
+        overrideColor=cmds.colorIndex(colorIndex, q=True)
+        ctrl=shp.customShape(shapeData, 'sphere', name=ctrlName, typeOverride=overrideColor, radius=ctrlSize)
+
+        startVector=om.MVector(cmds.xform(jointStart, query=True, ws=True, t=True))
+        endVector=om.MVector(cmds.xform(jointEnd, query=True, ws=True, t=True))
+        midVector=om.MVector(cmds.xform(poleTarget, query=True, ws=True, t=True))
+
+        startEndVector=endVector - startVector
+        print(startEndVector)
+
+        startMidVector=midVector - startVector
+        print(startMidVector)
+
+        projection=(startMidVector*startEndVector.normal())*startEndVector.normal()
+        print(projection)
+
+        poleVectorDirection=(startMidVector-projection).normal()
+        print(poleVectorDirection)
+
+        poleVectorPosition=midVector + poleVectorDirection * distance
+        print(poleVectorPosition)
+        
+        cmds.xform(ctrl, ws=True, t=(poleVectorPosition.x, poleVectorPosition.y, poleVectorPosition.z))
+        cmds.poleVectorConstraint(ctrl, handleName)
+
+def createIKFKChain(jointStart, jointEnd, jntNameStr='jnt', fkControls=None):
+    if cmds.objectType(jointStart) != 'joint' or cmds.objectType(jointEnd) != 'joint':
+        return None
+    jntChain=[]
+    cmds.select(jointStart, hi=True)
+    tempJntChain=cmds.ls(selection=True, type='joint')
+    for tempJnt in tempJntChain:
+        jntChain.append(tempJnt)
+        if tempJnt in jointEnd:
+            break
+
+    if jntChain:
+        ikChain=[]
+        tempIKChain=cmds.duplicate(jntChain, parentOnly=True, name='temp_ik_jnt')
+        for i, ikJnt in enumerate(tempIKChain):
+            if jntNameStr in ikJnt:
+                ikJntName=jntChain[i].replace(jntNameStr, 'ik_'+jntNameStr)
+                cmds.rename(ikJnt, ikJntName)
+            else:
+                ikJntName=jntChain[i]+'_ik'
+                cmds.rename(ikJnt, ikJntName)
+            ikChain.append(ikJntName)
+
+        fkChain=[]
+        tempFKChain=cmds.duplicate(jntChain, parentOnly=True, name='temp_fk_jnt')
+        for i, fkJnt in enumerate(tempFKChain):
+            if jntNameStr in fkJnt:
+                fkJntName=jntChain[i].replace(jntNameStr, 'fk_'+jntNameStr)
+                cmds.rename(fkJnt, fkJntName)
+            else:
+                fkJntName=jntChain[i]+'_fk'
+                cmds.rename(fkJnt, fkJntName)
+            fkChain.append(fkJntName)
+
+        for i, jnt in enumerate(jntChain):
+            cmds.parentConstraint(ikChain[i], fkChain[i], jnt, n=jnt+'_ik_fk_constraint')
+
+def createIKFKControls(jointStart, jointEnd, ctrlSize:int=15,
+                       jntSearchStr:str='jnt', ctrlReplaceStr:str='ctrl',
+                       colorIndex:int=6, shapeDirectory=None):
+    if cmds.objectType(jointStart) != 'joint' or cmds.objectType(jointEnd) != 'joint':
+        return None
+    cmds.select(jointStart, hi=True)
+    fkChain=cmds.ls(selection=True, type='joint')
+    parentCtrl=None
+
+    for jnt in fkChain:
+        childJnt=cmds.listRelatives(jnt, type='joint')
+        if childJnt:
+            curveRotation=getCurveRotation(childJnt)
+            overrideColor=cmds.colorIndex(colorIndex, q=True)
+            if jntSearchStr in jnt:
+                ctrlName=jnt.replace(jntSearchStr, 'fk_'+ctrlReplaceStr)
+            else:
+                ctrlName='fk_'+jnt
+            ctrl=shp.circleShape(name=ctrlName, 
+                                 radius=ctrlSize, typeOverride=overrideColor)
+            cmds.rotate(curveRotation[0], curveRotation[1], curveRotation[2], ctrl+'.cv[*]', os=True, r=True)
+            ctrlNode=cmds.group(n=ctrl+'_zero', em=True)
+            cmds.parent(ctrl, ctrlNode)
+            cmds.matchTransform(ctrlNode, jnt)
+
+            if parentCtrl:
+                cmds.parent(ctrlNode, parentCtrl)
+            parentCtrl=ctrl
+
+            if jnt in jointEnd:
+                curveRotation=getCurveRotation(childJnt)
+                if not shapeDirectory:
+                    cmds.warning('No IK Shape Created')
+                    return
+                shapeData=loadData(shapeDirectory, 'shapesCV_Data.json')
+                overrideColor=cmds.colorIndex(colorIndex, q=True)
+                if jntSearchStr in jnt:
+                    ctrlName=jnt.replace(jntSearchStr, 'ik_'+ctrlReplaceStr)
+                else:
+                    ctrlName='ik_'+jnt
+                ctrl=shp.customShape(shapeData, shapeLabel='star',
+                                     name=ctrlName, 
+                                     radius=ctrlSize, typeOverride=overrideColor)
+                cmds.rotate(curveRotation[0], curveRotation[1], curveRotation[2], ctrl+'.cv[*]', os=True, r=True)
+                ctrlNode=cmds.group(n=ctrl+'_zero', em=True)
+                cmds.parent(ctrl, ctrlNode)
+                cmds.matchTransform(ctrlNode, jnt)
+                break
 
 def savePositions(vertSelectionList:list, setName:str):
     '''
