@@ -890,10 +890,9 @@ class skeletonBuilderUI(QtWidgets.QWidget):
                              locScale:float=5):
         ''' Handles the createLocator & clusterLocParent module calls for either single or staged locator placement. '''
         locObjPos=mc.polyListComponentConversion(mc.ls(selection=True), toVertex=True)
-        if not locObjPos:
-            return None
         locObjID=md.createLocator(locName, prefix=prefix, suffix=suffix, locScale=locScale)
-        md.clusterLocParent(locObjPos, locName, locObjID)
+        if locObjPos:
+            md.clusterLocParent(locObjPos, locName, locObjID)
         return (locObjID, locObjPos)
 
     def create_single_locator(self):
@@ -906,9 +905,9 @@ class skeletonBuilderUI(QtWidgets.QWidget):
         locPrefix=self.locPrefixField.text()
         locSuffix=self.locSuffixField.text()
         locObjID=self.create_place_locator(locName, prefix=locPrefix, suffix=locSuffix, locScale=locScale)
-        if not locObjID:
-            mc.warning('No Selection made.')
-            return
+        # if not locObjID:
+        #     mc.warning('No Selection made.')
+        #     return
         self.singleLocField.clear()
         print(f'{locObjID} created.')
 

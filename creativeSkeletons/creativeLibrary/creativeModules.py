@@ -260,6 +260,7 @@ def getCurveRotation(childJoints:list):
 
 def setIKFKSwitch(jntConstraintSelection:list, switchControl, 
                   fkControls:list|None=None, ikControls:list|None=None):
+    ''' Sets up IK/FK joints and/or controllers switch configuration from the joint constraint selection to the provided switch control. '''
     for jntConstraint in jntConstraintSelection:
         if cmds.nodeType(jntConstraint) == 'parentConstraint':
             print(jntConstraint)
@@ -282,6 +283,7 @@ def setIKFKSwitch(jntConstraintSelection:list, switchControl,
                     cmds.select(cl=True)
                     break
     cmds.expression(s=f'{switchControl}.fk = 1 - {switchControl}.ik', name='ikSwitch')
+
     if fkControls:
         for ctrl in fkControls:
             cmds.connectAttr(f'{switchControl}.fk', f'{ctrl}.visibility')
@@ -292,10 +294,20 @@ def setIKFKSwitch(jntConstraintSelection:list, switchControl,
 def createIKHandle(handleName:str, jointStart, jointEnd, poleTarget=None, 
                    ikCtrl=None, colorIndex:int=6, jntNameStr='jnt', distance=10, ctrlSize=4, 
                    shapeDirectory=None):
+    ''' 
+    Sets up standard IkHandle configuration with an optional pole vector control.
+    Pole Vector control is placed based on the first (jointStart), mid (poleTarget), and end (jointEnd) joints for exact precision.
+    Shape Directory required for pole vector control shape, must include 'shapesCV_Data.json' file with the desired shape data.
+    '''
     if cmds.objectType(jointStart) != 'joint' or cmds.objectType(jointEnd) != 'joint':
         return None
-    
+
     cmds.ikHandle(startJoint=jointStart, endEffector=jointEnd, name=handleName)
+    cmds.select(clear=True)
+    cmds.orientConstraint(handleName, jointEnd)
+    ikEffector=cmds.listRelatives(jointEnd, type='ikEffector')
+    if ikEffector:
+        cmds.rename(ikEffector, handleName+'_effector')
     if ikCtrl:
         cmds.parent(handleName, ikCtrl)
 
@@ -335,7 +347,84 @@ def createIKHandle(handleName:str, jointStart, jointEnd, poleTarget=None,
         cmds.xform(ctrl, ws=True, t=(poleVectorPosition.x, poleVectorPosition.y, poleVectorPosition.z))
         cmds.poleVectorConstraint(ctrl, handleName)
 
-def createIKFKChain(jointStart, jointEnd, jntNameStr='jnt', fkControls=None):
+def createIKSpline(jointStart, jointMid, jointEnd, splineName:str,
+                   ctrlStart=None, ctrlMid=None, ctrlEnd=None,
+                   jntNameStr:str='jnt', jntControlName:str='ctrlJnt',
+                   createCustomCrv:bool=True, splineCurveName:str='ikSpline_crv',
+                   rollTwist=True):
+    
+    if cmds.objectType(jointStart) != 'joint' or cmds.objectType(jointMid) != 'joint' or cmds.objectType(jointEnd) != 'joint':
+        return None
+    
+    copyJoints=[]
+    copyJoints.append(cmds.duplicate(jointStart, po=True, n=jointStart.replace(jntNameStr, jntControlName))[0])
+    copyJoints.append(cmds.duplicate(jointMid, po=True, n=jointMid.replace(jntNameStr, jntControlName))[0])
+    copyJoints.append(cmds.duplicate(jointEnd, po=True, n=jointEnd.replace(jntNameStr, jntControlName))[0])
+
+    cmds.parent(copyJoints, world=True)
+    cmds.joint(copyJoints, edit=True, orientJoint='none')
+    # set joint rotation back to zero in case the joint isn't zero'd out
+    for copyJnt in copyJoints:
+        cmds.setAttr(f'{copyJnt}.rotateX', 0)
+        cmds.setAttr(f'{copyJnt}.rotateY', 0)
+        cmds.setAttr(f'{copyJnt}.rotateZ', 0)
+
+    if createCustomCrv:
+        cmds.select(cl=True)
+        cmds.select(jointStart, hi=True)
+        jntChain=cmds.ls(selection=True)
+        cmds.select(cl=True)
+        print(jntChain)
+
+        points=[]
+        for jnt in jntChain:
+            jntPos=cmds.xform(jnt, query=True, ws=True, t=True)
+            points.append(jntPos)
+            if jnt==jointEnd:
+                print(jnt)
+                break
+        if len(points)<=3:
+            degrees=2
+        else:
+            degrees=3
+        splineCurve=cmds.curve(n=splineCurveName, d=degrees, point=points)
+
+        splineHandle=cmds.ikHandle(name=splineName, solver='ikSplineSolver', createCurve=False, parentCurve=False,
+                      startJoint=jointStart, endEffector=jointEnd, curve=splineCurve,
+                      rootOnCurve=True)[0]
+        
+    else:
+        splineHandle=cmds.ikHandle(name=splineName, solver='ikSplineSolver', createCurve=True, parentCurve=False,
+                      startJoint=jointStart, endEffector=jointEnd, curve=splineCurve,
+                      rootOnCurve=True)[0]
+    
+    cmds.select(clear=True)
+    cmds.skinCluster(copyJoints[0], copyJoints[1], copyJoints[2], splineCurve, n=splineName+'_skinCluster', 
+                     bindMethod=0, skinMethod=0, normalizeWeights=1, maximumInfluences=3, toSelectedBones=True)
+    
+    if ctrlStart:
+        cmds.parentConstraint(ctrlStart, copyJoints[0])
+    if ctrlMid:
+        cmds.parentConstraint(ctrlMid, copyJoints[1])
+    if ctrlEnd:
+        cmds.parentConstraint(ctrlEnd, copyJoints[2])
+
+    if rollTwist:
+        multDivNode=cmds.createNode('multiplyDivide', name=splineName+'_twist_offset_multDivide')
+        cmds.setAttr(f'{multDivNode}.input2X', -1)
+        cmds.connectAttr(f'{ctrlStart}.rotateY', f'{multDivNode}.input1X')
+
+        pmaNode=cmds.createNode('plusMinusAverage', name=splineName+'_twist_offset_pma')
+        cmds.connectAttr(f'{multDivNode}.outputX', f'{pmaNode}.input1D[0]')
+        cmds.connectAttr(f'{ctrlEnd}.rotateY', f'{pmaNode}.input1D[1]')
+
+        cmds.connectAttr(f'{pmaNode}.output1D', f'{splineHandle}.twist')
+        cmds.connectAttr(f'{ctrlStart}.rotateY', f'{splineHandle}.roll')
+        if ctrlMid:
+            cmds.connectAttr(f'{ctrlMid}.rotateY', f'{pmaNode}.input1D[2]')
+
+def createIKFKChain(jointStart, jointEnd, jntNameStr='jnt'):
+    ''' Creates IK and FK duplicate joint chain and constraints the original chain to both. '''
     if cmds.objectType(jointStart) != 'joint' or cmds.objectType(jointEnd) != 'joint':
         return None
     jntChain=[]
@@ -375,6 +464,10 @@ def createIKFKChain(jointStart, jointEnd, jntNameStr='jnt', fkControls=None):
 def createIKFKControls(jointStart, jointEnd, ctrlSize:int=15,
                        jntSearchStr:str='jnt', ctrlReplaceStr:str='ctrl',
                        colorIndex:int=6, shapeDirectory=None):
+    ''' 
+    Creates basic IK and FK controller chain for the provided joint chain with alignment, orientation and proper hierarchy.
+    Shape Directory required for control shapes, must include 'shapesCV_Data.json'.
+    '''
     if cmds.objectType(jointStart) != 'joint' or cmds.objectType(jointEnd) != 'joint':
         return None
     cmds.select(jointStart, hi=True)
@@ -420,6 +513,77 @@ def createIKFKControls(jointStart, jointEnd, ctrlSize:int=15,
                 cmds.parent(ctrl, ctrlNode)
                 cmds.matchTransform(ctrlNode, jnt)
                 break
+
+def createFootPivots(footHandle, ankleHandle, ballHandle,
+                     footJoint, ankleJoint, ballJoint,
+                     mainControl,
+                     prefix:str='', suffix:str=''):
+    ''' Sets up foot pivot groups for handling ankle, ball and toe movement for IK controls. '''
+    toeTapGrp=cmds.group(n=prefix+'toe_tap'+suffix, em=True)
+    toeTapZero=cmds.group(toeTapGrp, n=prefix+'toe_tap'+suffix+'_zero')
+    cmds.matchTransform(toeTapZero, ankleJoint)
+    cmds.parent(toeTapZero, mainControl)
+    cmds.parent([ankleHandle, ballHandle], toeTapGrp)
+
+    heelPeelGrp=cmds.group(n=prefix+'heel_peel'+suffix, em=True)
+    heelPeelZero=cmds.group(heelPeelGrp, n=prefix+'heel_peel'+suffix+'_zero')
+    cmds.matchTransform(heelPeelZero, ankleJoint)
+    cmds.parent(heelPeelZero, mainControl)
+    cmds.parent(footHandle, heelPeelGrp)
+
+    swivelGrp=cmds.group([toeTapZero, heelPeelZero], n=prefix+'swivel'+suffix, em=True)
+    swivelZero=cmds.group(swivelGrp, n=prefix+'swivel'+suffix+'_zero')
+    cmds.matchTransform(swivelZero, ankleJoint)
+    cmds.parent(swivelZero, mainControl)
+    cmds.parent([toeTapZero, heelPeelZero], swivelGrp)
+
+    toeTipGrp=cmds.group(swivelZero, n=prefix+'toe_tip'+suffix, em=True)
+    toeTipZero=cmds.group(toeTipGrp, n=prefix+'toe_tip'+suffix+'_zero')
+    cmds.matchTransform(toeTipZero, ballJoint)
+    cmds.parent(toeTipZero, mainControl)
+    cmds.parent(swivelZero, toeTipGrp)
+
+    ankleGrp=cmds.group(toeTipZero, n=prefix+'ankle'+suffix, em=True)
+    ankleZero=cmds.group(ankleGrp, n=prefix+'ankle'+suffix+'_zero')
+    cmds.matchTransform(ankleZero, footJoint)
+    cmds.parent(ankleZero, mainControl)
+    cmds.parent(toeTipZero, ankleGrp)
+
+def setChannelBoxAttr(objs:list, translateAttr:bool=True, rotateAttr:bool=True, 
+                          scaleAttr:bool=False, visAttr:bool=False):
+    ''' Locks and hides channel box attributes for the object list based on the attribute type flags. '''
+    for objName in objs:
+        if not translateAttr:
+            cmds.setAttr(f'{objName}.translateX', lock=True, keyable=False)
+            cmds.setAttr(f'{objName}.translateY', lock=True, keyable=False)
+            cmds.setAttr(f'{objName}.translateZ', lock=True, keyable=False)
+        else:
+            cmds.setAttr(f'{objName}.translateX', lock=False, keyable=True)
+            cmds.setAttr(f'{objName}.translateY', lock=False, keyable=True)
+            cmds.setAttr(f'{objName}.translateZ', lock=False, keyable=True)
+
+        if not rotateAttr:
+            cmds.setAttr(f'{objName}.rotateX', lock=True, keyable=False)
+            cmds.setAttr(f'{objName}.rotateY', lock=True, keyable=False)
+            cmds.setAttr(f'{objName}.rotateZ', lock=True, keyable=False)
+        else:    
+            cmds.setAttr(f'{objName}.rotateX', lock=False, keyable=True)
+            cmds.setAttr(f'{objName}.rotateY', lock=False, keyable=True)
+            cmds.setAttr(f'{objName}.rotateZ', lock=False, keyable=True)
+
+        if not scaleAttr:
+            cmds.setAttr(f'{objName}.scaleX', lock=True, keyable=False)
+            cmds.setAttr(f'{objName}.scaleY', lock=True, keyable=False)
+            cmds.setAttr(f'{objName}.scaleZ', lock=True, keyable=False)
+        else:
+            cmds.setAttr(f'{objName}.scaleX', lock=False, keyable=True)
+            cmds.setAttr(f'{objName}.scaleY', lock=False, keyable=True)
+            cmds.setAttr(f'{objName}.scaleZ', lock=False, keyable=True)
+        
+        if not visAttr:
+            cmds.setAttr(f'{objName}.visibility', keyable=False)
+        else:
+            cmds.setAttr(f'{objName}.visibility', keyable=True)
 
 def savePositions(vertSelectionList:list, setName:str):
     '''

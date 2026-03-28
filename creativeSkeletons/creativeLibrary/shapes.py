@@ -13,9 +13,6 @@ def circleShape(name='crnode', radius=1, typeOverride=None):
 
     if typeOverride:
         # enable and set color RGB override
-        print(typeOverride[0])
-        print(typeOverride[1])
-        print(typeOverride[2])
         mc.setAttr(f"{crv}.overrideRGBColors", True)
         mc.setAttr(f"{crv}.overrideColorRGB", typeOverride[0], typeOverride[1], typeOverride[2])
     else:
@@ -23,7 +20,7 @@ def circleShape(name='crnode', radius=1, typeOverride=None):
         mc.setAttr(f"{crv}.overrideColor", 6)
     return crv
 
-def customShape(shapeData:dict, shapeLabel='square', radius=1, name='crnode', typeOverride=None):
+def customShape(shapeData:dict, shapeLabel='square', radius=1, name='crnode', typeOverride=None, rgb:list|None=None, indexColor=6):
     '''
     typeOverride args: [float, float, float]
     '''
@@ -106,6 +103,14 @@ def customShape(shapeData:dict, shapeLabel='square', radius=1, name='crnode', ty
     else:
         # enable and set default (blue) color Index override
         mc.setAttr(f"{crv}.overrideColor", 6)
+
+    if rgb:
+        # enable and set color RGB override
+        mc.setAttr(f"{crv}.overrideRGBColors", True)
+        mc.setAttr(f"{crv}.overrideColorRGB", rgb[0], rgb[1], rgb[2])
+    else:
+        # enable Index override
+        mc.setAttr(f"{crv}.overrideColor", indexColor)
 
     return crv
 

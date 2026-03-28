@@ -29,12 +29,10 @@ class shapeLibraryUI:
         # shape name label trackers
         self.selectedShapeLabel = None
         self.newShapeLabel = None # for newly saved/stored shapes
-        self._customShapeList = [] # manager for new shape icons into the scroll ui
-
-        # if mc.window(WINDOW_ID, exists=True):
-        #     mc.deleteUI(WINDOW_ID, window=True)      
+        self._customShapeList = [] # manager for new shape icons into the scroll ui  
 
     def build_window_layout(self):
+        ''' Builds the main UI window layout for the shape library. '''
         self.windowDisplay = mc.window(WINDOW_ID, title=WINDOW_TITLE, widthHeight=self.window_size, sizeable=True)
 
         # create & set form layout with UI elements
@@ -77,11 +75,12 @@ class shapeLibraryUI:
                                              columnWidth=[(1,50), (2,80)], enable=True) 
         self.suffixTextField=mc.textFieldGrp(label='Suffix:', text='_ctrl', parent=prefixSuffixLayout,
                                              columnWidth=[(1,50), (2,80)], enable=True)
-        
+        # create checkbox for adding zero/offset node groups on top of created shape
         zeroNodeLayout=mc.rowColumnLayout(parent=midLayout, columnAttach=(1, 'left', 180))
         mc.checkBox('zeroNodeCheck', label='Create with Zero/Offset Node', parent=zeroNodeLayout,
                     value=True)
 
+        # create layout for controller creation options based onn joint selection
         ctrlLayout=mc.rowColumnLayout(numberOfColumns=2, parent=midLayout,
                                       columnAttach=[(1, 'left', 100), (2, 'left', 10)],
                                       columnAlign=[(1, 'right'), (2, 'left'), ])
@@ -110,10 +109,10 @@ class shapeLibraryUI:
                                               visible=False)
         self.searchNameField=mc.textFieldGrp('searchNameField', label='Strip Joint Name:', parent=replaceNamesLayout,
                                               placeholderText='Joint Name String', columnWidth=(2,110),
-                                              visible=False)
+                                              text='jnt', visible=False)
         self.replaceNameField=mc.textFieldGrp('replaceNameField', label='Replace Ctrl Name:', parent=replaceNamesLayout,
                                               placeholderText='Ctrl Name String', columnWidth=[(1,55), (2,110)],
-                                              visible=False)
+                                              text='ctrl', visible=False)
 
         self.nameTextField = mc.textFieldGrp(label='Name:', parent=midLayout,
                                              placeholderText='Name your controller shape', 
@@ -123,6 +122,7 @@ class shapeLibraryUI:
                                           columnWidth=[(1,30), (2,80)], fieldMinValue=1, 
                                           fieldMaxValue=1000, minValue=1, maxValue=10, value=1)
 
+        # create color selection menu with option swap to select from index palette or RGB/HSV values
         self.colorMenu = mc.optionMenu(parent=self.mainLayout,
                                        changeCommand=self.swap_colorUI)
         mc.menuItem(label='Index')
@@ -187,19 +187,13 @@ class shapeLibraryUI:
             self._customShapeList.append(customShape)
   
     def popup_menu(self, shapeLabel, parentUI):
-        ''' 
-        Creates a popup menu (right mouse click) to rename and update thumbnail for each icon.
-        '''
+        ''' Creates a popup menu (right mouse click) for showing update saved shape window. '''
         popMenu = mc.popupMenu(numberOfItems=3,parent=parentUI)
         mc.menuItem(label='Rename Shape Label', command=lambda arg: self.rename_label_ui(shapeLabel, parentUI))
-        # mc.menuItem(label='option2')
-        # mc.menuItem(label='option3')
 
     def rename_label_ui(self, shapeLabel:str, button:str):
-        '''
-        Creates UI window to rename a icon label. 
-        '''
-        windowID = 'RENAMESHAPE'
+        ''' Handles creation of UI window for renaming an icon label. '''
+        windowID = 'RenameShapeUI'
         windowTitle = 'Flexible Shapes Library'
         size = (300,250)
 
@@ -231,7 +225,7 @@ class shapeLibraryUI:
         ''' Changes the key (shape label) variable name for a shape stored in the JSON data. '''
         # get shapeData dictionary and get the key variables
         # store the values (data) of obtained key variable
-        shapeData = md.load_data((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
+        shapeData = md.loadData((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json')
         for shape in shapeData.keys():
             if shape==shapeLabel:
                 print(f'Rename {shapeLabel}')
@@ -251,7 +245,7 @@ class shapeLibraryUI:
             os.rename(os.path.join(self.baseDirectory, 'creativeLibrary','imgs', f'{shapeLabel}.jpg'), 
                       os.path.join(self.baseDirectory, 'creativeLibrary', 'imgs', f'{newName}.jpg'))
             # overwrite updated dictionary data on top of old JSON data
-            md.save_data((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json', shapeData)
+            md.saveData((os.path.join(self.baseDirectory, 'creativeLibrary', 'data')), 'shapesCV_Data.json', shapeData)
             # update icon button UI with new given name 
             updatedButton = mc.iconTextRadioButton(button, edit=True, image1=os.path.join(self.baseDirectory, 'creativeLibrary',
                                                                                           'imgs', f'{shapeLabel}.jpg'), 
@@ -265,6 +259,7 @@ class shapeLibraryUI:
             mc.warning('No name given to rename shape.')
             
     def save_shape_ui(self, *args):
+        ''' Handles creation of UI window for saving selected shape settings into the current library. '''
         windowID = 'SAVESHAPE'
         windowTitle = 'Flexible Shapes Library'
         size = (400,250)
@@ -297,7 +292,7 @@ class shapeLibraryUI:
         mc.showWindow()
 
     def save_shape(self, *args):
-
+        ''' Helper method to save selected shape into the current library and updates the UI. '''
         custom_shapeLabel = mc.textFieldGrp(self.newShapeLabel, query=True, text=True)
 
         activeCam = mc.checkBoxGrp(self.saveSettingsGrp, query=True, value1=True)
@@ -321,6 +316,7 @@ class shapeLibraryUI:
         self.selectedShapeLabel = mc.iconTextRadioButton(self.selected_shape, query=True, label=True)
         
     def create_shapes(self, *args):
+        ''' Creates shape based on UI selection, collects the input settings for naming, scaling, and coloring. '''
         if not self.selectedShapeLabel:
             mc.warning('Select a shape to create.')
             return
@@ -364,11 +360,9 @@ class shapeLibraryUI:
         if mc.checkBox('zeroNodeCheck', query=True, value=True):
             grpNode=mc.group(n=ctrl+'_zero', empty=True)
             mc.parent(ctrl, grpNode)
-
-        shapeName = mc.textFieldGrp(self.nameTextField, edit=True, text='')
         
     def create_joint_controllers(self, *args):
-        
+        ''' Creates shapes based on UI selection for each selected joint, placing and orienting them based on the joint. '''
         if not self.selectedShapeLabel:
             mc.warning('Select a shape to create.')
             return
@@ -431,6 +425,7 @@ class shapeLibraryUI:
                     mc.delete(mc.orientConstraint(jnt, ctrlNode))
 
     def swap_createShapes_dependencies(self, enableField=True):
+        ''' Handles which UI elements, options and dependencies for shape creation are visible. '''
         if enableField:
             mc.control('prefixSuffixLayout', edit=True, visible=True)
             mc.control(self.prefixTextField, edit=True, visible=True)
