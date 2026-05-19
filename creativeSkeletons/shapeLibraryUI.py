@@ -23,7 +23,7 @@ class shapeLibraryUI:
     '''
     window_size = (ORIGINAL_WIDTH, ORIGINAL_WIDTH)
     def __init__ (self):
-         
+
         # store the directory path for icon file calls
         self.baseDirectory=os.path.dirname(__file__)
         # shape name label trackers
