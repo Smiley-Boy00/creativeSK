@@ -20,35 +20,47 @@ class creativeMatch():
         self.mainWindow=mc.window(WINDOW_ID, title="creativeMatch", widthHeight=(300,200))
         
         self.mainLayout=mc.formLayout(self.mainWindow)
-        leftFKArmButton=mc.button(label="Match FK Left Arm", command=self.fk_match)
-        rightFKArmButton=mc.button(label="Match FK Right Arm", command=lambda args:self.fk_match(side='right'))
-        
+
+        leftIKArmButton=mc.button(label="Match IK Left Arm", command=self.match)
+        rightIKArmButton=mc.button(label="Match IK Right Arm", command=lambda args:self.match(side='right'))
+
+        leftFKArmButton=mc.button(label="Match FK Left Arm", command=lambda args:self.match(match='fk'))
+        rightFKArmButton=mc.button(label="Match FK Right Arm", command=lambda args:self.match(side='right'))
+
         mc.formLayout(self.mainLayout, edit=True, attachForm=[[leftFKArmButton, "top", 10], [leftFKArmButton, "left", 5],
-                                                              [rightFKArmButton, "top", 10], [rightFKArmButton, "left", 5]],
-                                                attachControl=[[rightFKArmButton, "left", 10, leftFKArmButton]])
+                                                              [rightFKArmButton, "top", 10], [rightFKArmButton, "left", 5],
+                                                              [leftIKArmButton, "top", 10], [leftIKArmButton, "left", 5],
+                                                              [rightIKArmButton, "top", 10], [rightIKArmButton, "left", 5]],
+                                                attachControl=[[leftFKArmButton, "top", 10, leftIKArmButton],
+                                                               [rightFKArmButton, "top", 10, rightIKArmButton],
+                                                               [rightIKArmButton, "left", 10, leftIKArmButton],
+                                                               [rightFKArmButton, "left", 10, leftFKArmButton]])
         
         mc.showWindow()
-        
-    def check_selection(self, *args):
-        ctrl=mc.ls(selection=True)
-        
-        if len(ctrl)>1:
-            mc.warning("Select only one ctrl for limb")
-            return
-        if "ctrl" in ctrl[0]:
-            if "fk" in ctrl[0]:
-                self.fk_ctrl=ctrl[0]
-                self.fk_match()
-            if "ik" in ctrl[0]:
-                self.ik_ctrl=ctrl[0]
     
-    def fk_match(self, *args, limb:str="arm", side:str="left"):
+    def match(self, *args, match:str="ik", limb:str="arm", side:str="left"):
 
-        controlsToMatch=[side+ctrl for ctrl in self.fk_controls.get(limb)]
-        for ctrl in controlsToMatch:
-            if mc.objExists(ctrl):
-                mc.setAttr(f"{side}_{limb}_settings_ctrl.IK", 1)
-                jnt_match=ctrl.replace("fk_ctrl", "jnt")
-                mc.matchTransform(ctrl, jnt_match)
-                mc.setAttr(f"{side}_{limb}_settings_ctrl.IK", 0)
+        if match == 'ik':
+            controlsToMatch=[side+ctrl for ctrl in self.ik_controls.get(limb)]
+
+            mc.setAttr(f"{side}_{limb}_settings_ctrl.IK", 0)
+            for ctrl in controlsToMatch:
+                if mc.objExists(ctrl):
+                    if "elbow" in ctrl or "knee" in ctrl:
+                        match_node=ctrl.replace("ik_ctrl", "loc")
+                    else:
+                        match_node=ctrl.replace("ik_ctrl", "jnt")
+                    mc.matchTransform(ctrl, match_node)
+            mc.setAttr(f"{side}_{limb}_settings_ctrl.IK", 1)
+
+        elif match == 'fk':
+            controlsToMatch=[side+ctrl for ctrl in self.fk_controls.get(limb)]
+
+            mc.setAttr(f"{side}_{limb}_settings_ctrl.IK", 1)
+            for ctrl in controlsToMatch:
+                if mc.objExists(ctrl):
+                    jnt_match=ctrl.replace("fk_ctrl", "jnt")
+                    mc.matchTransform(ctrl, jnt_match)
+            mc.setAttr(f"{side}_{limb}_settings_ctrl.IK", 0)
+
     
