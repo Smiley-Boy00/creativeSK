@@ -54,7 +54,7 @@ This project is part of an ongoing rigging and tooling portfolio focused on syst
 **/maya/plug-ins** (this directory is usually found in the Documents folder).
 > - Place **out_cLocator.png** icon inside **/maya/prefs/icons**, create onne if it doesn't exist.
 > - Inside Maya, go to **Windows -> Settings/Preferences -> Plug-in Manager**.
-> - In the **Plug-in Manager** enable the **MtoU.py** plugin, a tab named "Exporter Tools" should appear where you can start utilizing the MtoU exporter.
+> - In the **Plug-in Manager** enable the **creativeSkeletons.py** plugin, a tab named "Creative Skeletons" should appear where you can start utilizing the creativeSK tools.
 
 ## Project Status
 
